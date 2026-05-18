@@ -106,6 +106,8 @@ def _transcode(avi: Path, mp4: Path,
         mp4.unlink(missing_ok=True)
 
 
+_POST_EVENT_COOLDOWN_SECS = 30  # 이벤트 종료 후 이 시간 동안 재트리거 무시
+
 class EventTrigger:
     def __init__(self, csi_rec, usb_rec, mic_rec, db: EventDB):
         self._csi = csi_rec
@@ -113,6 +115,7 @@ class EventTrigger:
         self._mic = mic_rec
         self._db = db
         self._in_event = False
+        self._last_event_end: float = 0.0
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -141,9 +144,26 @@ class EventTrigger:
     # ------------------------------------------------------------------
 
     def _gpio_callback(self, channel: int) -> None:
+        import RPi.GPIO as _GPIO
+        # 노이즈 필터: 50ms 뒤에도 여전히 LOW인지 확인 (sustained LOW)
+        time.sleep(0.05)
+        if _GPIO.input(channel) != _GPIO.LOW:
+            log.info("GPIO false trigger (pin not sustained LOW) — ignored")
+            return
+        # 추가 확인: 또 50ms 뒤
+        time.sleep(0.05)
+        if _GPIO.input(channel) != _GPIO.LOW:
+            log.info("GPIO false trigger (pin not sustained LOW x2) — ignored")
+            return
+
         with self._lock:
+            now = time.time()
             if self._in_event:
                 log.debug("Event already in progress — ignoring trigger")
+                return
+            if now - self._last_event_end < _POST_EVENT_COOLDOWN_SECS:
+                remaining = _POST_EVENT_COOLDOWN_SECS - (now - self._last_event_end)
+                log.debug("Post-event cooldown active (%.1fs left) — ignoring trigger", remaining)
                 return
             self._in_event = True
 
@@ -227,4 +247,5 @@ class EventTrigger:
 
         finally:
             with self._lock:
+                self._last_event_end = time.time()
                 self._in_event = False

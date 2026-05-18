@@ -18,6 +18,7 @@ from .event_db import EventDB
 from .event_trigger import EventTrigger
 from . import streamer
 from . import someip_server
+from .udp_streamer import UDPStreamServer
 
 log = logging.getLogger(__name__)
 
@@ -69,11 +70,15 @@ def main() -> None:
 
     someip_server.start_in_thread(db)
 
+    udp_stream = UDPStreamServer(usb if usb_ok else None)
+    udp_stream.start()
+
     log.info(
         "RPi #2 Blackbox running\n"
         "  GPIO%d  = event trigger  (pre=%ds / post=%ds)\n"
         "  Web UI  = http://0.0.0.0:%d/\n"
         "  SOME/IP = AccidentHistoryService @ %s:%d\n"
+        "  UDP     = live stream @ 0.0.0.0:%d\n"
         "  Ctrl+C  = 종료",
         config.GPIO_SWITCH_PIN,
         config.PRE_EVENT_SECS,
@@ -81,6 +86,7 @@ def main() -> None:
         config.FLASK_PORT,
         config.MEDIA_INTERFACE_IP,
         config.SOMEIP_SERVICE_PORT,
+        config.UDP_STREAM_PORT,
     )
 
     # Ctrl+C (KeyboardInterrupt) 로 종료

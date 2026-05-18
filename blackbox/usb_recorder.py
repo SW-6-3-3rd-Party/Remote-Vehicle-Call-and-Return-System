@@ -69,8 +69,14 @@ class USBRecorder:
         log.info("USB recorder stopped")
 
     # ------------------------------------------------------------------
-    # Live stream generator
+    # Live stream API
     # ------------------------------------------------------------------
+
+    def wait_frame(self, timeout: float = 2.0) -> bytes:
+        """다음 JPEG 프레임이 올 때까지 대기 후 반환. timeout 초 내 프레임 없으면 b'' 반환."""
+        with self._frame_cond:
+            self._frame_cond.wait(timeout=timeout)
+            return self._latest_jpeg
 
     def iter_frames(self):
         while True:
@@ -89,6 +95,36 @@ class USBRecorder:
     # Main capture loop
     # ------------------------------------------------------------------
 
+    def _reconnect(self) -> bool:
+        """카메라 재연결 시도. 성공하면 True 반환."""
+        log.warning("USB camera disconnected — attempting reconnect …")
+        if self._cap:
+            self._cap.release()
+            self._cap = None
+
+        for attempt in range(1, 6):
+            time.sleep(2.0)
+            if self._stop_evt.is_set():
+                return False
+            try:
+                device_idx = config.USB_DEVICE if config.USB_DEVICE is not None \
+                             else self._find_usb_device()
+                cap = cv2.VideoCapture(device_idx, cv2.CAP_V4L2)
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.USB_WIDTH)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.USB_HEIGHT)
+                cap.set(cv2.CAP_PROP_FPS, config.USB_FPS)
+                ret, _ = cap.read()
+                if cap.isOpened() and ret:
+                    self._cap = cap
+                    log.info("USB camera reconnected (attempt %d)", attempt)
+                    return True
+                cap.release()
+            except Exception as e:
+                log.warning("USB reconnect attempt %d failed: %s", attempt, e)
+
+        log.error("USB camera reconnect failed after 5 attempts")
+        return False
+
     def _loop(self) -> None:
         try:
             self._cont_writer, self._cont_start = self._open_cont_writer()
@@ -97,12 +133,21 @@ class USBRecorder:
             self._cont_writer = None
             self._cont_start = time.time()
 
+        consecutive_failures = 0
+
         while not self._stop_evt.is_set():
             try:
                 ret, frame_bgr = self._cap.read()
                 if not ret:
-                    time.sleep(0.01)
+                    consecutive_failures += 1
+                    if consecutive_failures >= 30:  # ~0.3초 연속 실패 → 재연결
+                        consecutive_failures = 0
+                        if not self._reconnect():
+                            break  # 재연결 실패 시 루프 종료
+                    else:
+                        time.sleep(0.01)
                     continue
+                consecutive_failures = 0
                 now = time.time()
 
                 self.ring.push((now, frame_bgr))

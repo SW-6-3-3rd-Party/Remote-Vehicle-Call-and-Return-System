@@ -41,6 +41,10 @@ DB_PATH         = RECORDINGS_BASE / "events.db"
 FLASK_HOST = "0.0.0.0"
 FLASK_PORT = 8088
 
+# ---------- UDP live streaming ----------
+UDP_STREAM_PORT    = 5000   # RPi가 수신 대기하는 포트 (PC → RPi 요청/keepalive)
+UDP_STREAM_TIMEOUT = 5.0    # 이 초 동안 keepalive 없으면 스트리밍 자동 중단
+
 # ---------- SOME/IP ----------
 MEDIA_INTERFACE_IP        = "192.168.20.2"   # someipyd interface IP
 SOMEIP_SERVICE_PORT       = 30491
