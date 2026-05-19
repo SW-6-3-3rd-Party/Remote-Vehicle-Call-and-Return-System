@@ -3,7 +3,7 @@
 # =========================
 
 # PC가 바라보는 Gateway 주소
-GATEWAY_WIFI_IP = "192.168.201.2"
+GATEWAY_WIFI_IP = "192.168.201.1"
 
 # Media RPi와 연결되는 Gateway eth0 주소
 GATEWAY_ETH_IP = "192.168.20.1"
@@ -33,3 +33,17 @@ PAYLOAD_ENCODING = "utf-8"
 
 MEDIA_HTTP_PORT = 8088
 GATEWAY_PROXY_PORT = 5000
+
+# =========================
+# MAIN / Buzzer SOME/IP Config
+# =========================
+
+# 문서 기준: Gateway eth0.10 -> MAIN ECU
+GATEWAY_MAIN_ETH_IP = "192.168.10.1"
+MAIN_ECU_IP = "192.168.10.2"
+
+BUZZER_SOMEIP_CLIENT_PORT = 30492
+
+BUZZER_SERVICE_ID = 0x2001
+BUZZER_INSTANCE_ID = 0x0001
+SET_BUZZER_STATE_METHOD_ID = 0x0001

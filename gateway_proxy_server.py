@@ -13,7 +13,11 @@ from config import (
     MEDIA_HTTP_PORT,
 )
 
-from gateway_someip_client import request_accident_list_from_media
+from gateway_someip_client import (
+    request_accident_list_from_media,
+    request_buzzer_state_to_main,
+)
+
 from udp_video_bridge import UDPVideoBridge
 
 
@@ -21,8 +25,8 @@ app = Flask(__name__)
 
 MEDIA_IP = "192.168.20.2"
 
-MAIN_ECU_IP = "192.168.20.3"      # MAIN 보드 IP로 수정
-MAIN_CONTROL_PORT = 6000          # MAIN 팀과 정한 포트로 수정
+MAIN_ECU_IP = "192.168.10.2"
+MAIN_CONTROL_PORT = 5000
 
 front_bridge = UDPVideoBridge(MEDIA_IP, 5000)
 rear_bridge = front_bridge
@@ -245,6 +249,66 @@ def send_control_to_main(command_data: dict) -> bool:
         print(f"[Control -> MAIN] failed: {e}")
         return False
 
+@app.post("/control/buzzer")
+def control_buzzer():
+    """
+    React 후진 경고음 버튼에서 들어오는 요청 처리.
+
+    PC/React -> Gateway:
+    POST /control/buzzer
+
+    Gateway -> MAIN:
+    SOME/IP BuzzerControlService.SetBuzzerState
+    """
+
+    request_data = request.get_json(silent=True)
+
+    if not request_data:
+        return jsonify({
+            "result": "INVALID_REQUEST",
+            "error_code": 1,
+            "message": "request body is empty",
+        }), 400
+
+    vehicle_id = request_data.get("vehicle_id", vehicle_state["vehicle_id"])
+    buzzer_state = request_data.get("buzzer_state")
+
+    try:
+        vehicle_id = int(vehicle_id)
+        buzzer_state = int(buzzer_state)
+    except (TypeError, ValueError):
+        return jsonify({
+            "result": "INVALID_REQUEST",
+            "error_code": 1,
+            "vehicle_id": vehicle_id,
+            "buzzer_state": buzzer_state,
+            "message": "vehicle_id and buzzer_state must be integer",
+        }), 400
+
+    if buzzer_state not in [0, 1]:
+        return jsonify({
+            "result": "INVALID_REQUEST",
+            "error_code": 1,
+            "vehicle_id": vehicle_id,
+            "buzzer_state": buzzer_state,
+            "message": "buzzer_state must be 0 or 1",
+        }), 400
+
+    response_data = asyncio.run(
+        request_buzzer_state_to_main(
+            vehicle_id=vehicle_id,
+            buzzer_state=buzzer_state,
+        )
+    )
+
+    status_code = 200
+
+    if response_data.get("result") == "INVALID_REQUEST":
+        status_code = 400
+    elif response_data.get("result") == "INTERNAL_ERROR":
+        status_code = 502
+
+    return jsonify(response_data), status_code
 
 @app.post("/control")
 def control_command():

@@ -20,7 +20,14 @@ from config import (
     ACCIDENT_INSTANCE_ID,
     GET_RECORD_LIST_METHOD_ID,
     PAYLOAD_ENCODING,
+
+    GATEWAY_MAIN_ETH_IP,
+    BUZZER_SOMEIP_CLIENT_PORT,
+    BUZZER_SERVICE_ID,
+    BUZZER_INSTANCE_ID,
+    SET_BUZZER_STATE_METHOD_ID,
 )
+
 
 
 SERVICE_WAIT_TIMEOUT_SEC = 5.0
@@ -136,6 +143,140 @@ async def request_accident_list_from_media(vehicle_id: int = 1) -> dict:
 
     except Exception as e:
         return make_error_response(f"Gateway SOME/IP client error: {e}")
+
+    finally:
+        await someipy_daemon.disconnect_from_daemon()
+
+
+async def request_buzzer_state_to_main(
+    vehicle_id: int = 1,
+    buzzer_state: int = 0,
+) -> dict:
+    """
+    Gateway가 MAIN ECU의 BuzzerControlService에
+    SetBuzzerState SOME/IP 요청을 보내고 JSON 응답을 받아오는 함수.
+    """
+
+    set_someipy_log_level(logging.INFO)
+
+    if buzzer_state not in [0, 1]:
+        return {
+            "result": "INVALID_REQUEST",
+            "error_code": 1,
+            "vehicle_id": vehicle_id,
+            "buzzer_state": buzzer_state,
+            "detail": "buzzer_state must be 0 or 1",
+        }
+
+    someipy_daemon = await connect_to_someipy_daemon()
+
+    buzzer_method = Method(
+        id=SET_BUZZER_STATE_METHOD_ID,
+        protocol=TransportLayerProtocol.UDP,
+    )
+
+    buzzer_service = (
+        ServiceBuilder()
+        .with_service_id(BUZZER_SERVICE_ID)
+        .with_major_version(1)
+        .with_method(buzzer_method)
+        .build()
+    )
+
+    client_instance = ClientServiceInstance(
+        daemon=someipy_daemon,
+        service=buzzer_service,
+        instance_id=BUZZER_INSTANCE_ID,
+        endpoint_ip=GATEWAY_MAIN_ETH_IP,
+        endpoint_port=BUZZER_SOMEIP_CLIENT_PORT,
+    )
+
+    try:
+        print("[Gateway] Waiting for MAIN BuzzerControlService...")
+
+        available = await wait_until_available(
+            client_instance,
+            SERVICE_WAIT_TIMEOUT_SEC,
+        )
+
+        if not available:
+            return {
+                "result": "INTERNAL_ERROR",
+                "error_code": 2,
+                "vehicle_id": vehicle_id,
+                "buzzer_state": buzzer_state,
+                "detail": "MAIN BuzzerControlService not available",
+            }
+
+        print("[Gateway] MAIN BuzzerControlService available")
+
+        request_data = {
+            "vehicle_id": vehicle_id,
+            "buzzer_state": buzzer_state,
+        }
+
+        request_payload = json.dumps(request_data).encode(PAYLOAD_ENCODING)
+
+        print(f"[Gateway] Send SetBuzzerState to MAIN: {request_data}")
+
+        method_result = await asyncio.wait_for(
+            client_instance.call_method(
+                SET_BUZZER_STATE_METHOD_ID,
+                request_payload,
+            ),
+            timeout=METHOD_CALL_TIMEOUT_SEC,
+        )
+
+        if method_result.message_type != MessageType.RESPONSE:
+            return {
+                "result": "INTERNAL_ERROR",
+                "error_code": 2,
+                "vehicle_id": vehicle_id,
+                "buzzer_state": buzzer_state,
+                "detail": f"Unexpected SOME/IP message type: {method_result.message_type}",
+            }
+
+        if method_result.return_code != ReturnCode.E_OK:
+            return {
+                "result": "INTERNAL_ERROR",
+                "error_code": 2,
+                "vehicle_id": vehicle_id,
+                "buzzer_state": buzzer_state,
+                "detail": f"SOME/IP return_code error: {method_result.return_code}",
+            }
+
+        response_text = method_result.payload.decode(PAYLOAD_ENCODING)
+        response_data = json.loads(response_text)
+
+        print(f"[Gateway] MAIN response received: {response_data}")
+        return response_data
+
+    except asyncio.TimeoutError:
+        return {
+            "result": "INTERNAL_ERROR",
+            "error_code": 2,
+            "vehicle_id": vehicle_id,
+            "buzzer_state": buzzer_state,
+            "detail": "Timeout while waiting MAIN SOME/IP response",
+        }
+
+    except json.JSONDecodeError as e:
+        return {
+            "result": "INTERNAL_ERROR",
+            "error_code": 2,
+            "vehicle_id": vehicle_id,
+            "buzzer_state": buzzer_state,
+            "detail": f"Invalid JSON from MAIN: {e}",
+        }
+
+    except Exception as e:
+        return {
+            "result": "INTERNAL_ERROR",
+            "error_code": 2,
+            "vehicle_id": vehicle_id,
+            "buzzer_state": buzzer_state,
+            "detail": f"Gateway MAIN SOME/IP client error: {e}",
+        }
 
     finally:
         await someipy_daemon.disconnect_from_daemon()
