@@ -922,3 +922,3413 @@ button {
     rgba(15, 23, 42, 0.36)
   );
 }
+
+/* =========================
+   Remote Control Page
+   ========================= */
+
+.remote-page {
+  min-height: 100vh;
+  padding: 12px;
+  background: linear-gradient(180deg, #07111d 0%, #0b1724 100%);
+  color: #e5f1ff;
+  overflow-x: hidden;
+}
+
+.remote-top-bar {
+  display: grid;
+  grid-template-columns: 180px 1fr 360px;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.remote-back-button {
+  height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #93c5fd;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.remote-title-box {
+  text-align: center;
+}
+
+.remote-title-box h1 {
+  margin: 0;
+  font-size: 28px;
+  color: white;
+}
+
+.remote-title-box p {
+  margin: 4px 0 0;
+  color: #60a5fa;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.remote-status-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.connection-pill,
+.battery-pill {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.connection-pill.connected {
+  color: #22c55e;
+}
+
+.connection-pill.disconnected {
+  color: #ef4444;
+}
+
+.battery-icon {
+  width: 28px;
+  height: 14px;
+  position: relative;
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid #22c55e;
+  border-radius: 3px;
+}
+
+.battery-icon::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: 4px;
+  width: 3px;
+  height: 6px;
+  background: #22c55e;
+  border-radius: 1px;
+}
+
+.battery-icon span {
+  display: block;
+  width: 78%;
+  height: 100%;
+  background: #22c55e;
+  border-radius: 2px;
+}
+
+.remote-layout {
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  grid-template-rows: 1fr 220px;
+  gap: 10px;
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.camera-main-panel,
+.camera-sub-panel,
+.signal-panel,
+.hazard-panel,
+.ignition-card,
+.horn-card,
+.brake-card,
+.steering-card,
+.gear-card,
+.speed-card,
+.vehicle-state-card {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.96));
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.camera-main-panel {
+  min-height: 460px;
+}
+
+.camera-sub-panel {
+  height: 230px;
+}
+
+.camera-label {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  left: 14px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.72);
+  color: white;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.camera-placeholder {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(125, 211, 252, 0.65), rgba(30, 64, 175, 0.08) 42%, rgba(55, 65, 81, 0.9) 43%),
+    linear-gradient(90deg, #166534, #94a3b8, #166534);
+}
+
+.camera-placeholder.rear {
+  background:
+    linear-gradient(180deg, rgba(125, 211, 252, 0.55), rgba(30, 64, 175, 0.1) 48%, rgba(55, 65, 81, 0.95) 49%),
+    linear-gradient(90deg, #166534, #64748b, #166534);
+}
+
+.camera-placeholder p {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 28px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 900;
+}
+
+.road-line {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 18px;
+  height: 55%;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9) 0 42px,
+    transparent 42px 78px
+  );
+  opacity: 0.8;
+}
+
+.road-line.small {
+  width: 12px;
+  height: 52%;
+}
+
+.right-control-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 230px 116px 1fr;
+  gap: 10px;
+}
+
+.camera-sub-panel {
+  grid-column: 1 / 3;
+}
+
+.signal-panel,
+.hazard-panel {
+  padding: 14px;
+}
+
+.signal-panel h3,
+.hazard-panel h3,
+.ignition-card h3,
+.horn-card h3,
+.brake-card h3,
+.steering-card h3,
+.gear-card h3,
+.speed-card h3,
+.vehicle-state-card h3 {
+  margin: 0 0 10px;
+  color: #dbeafe;
+  font-size: 15px;
+  text-align: center;
+}
+
+.signal-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.signal-button {
+  height: 66px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #22c55e;
+  font-size: 42px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.signal-button span {
+  display: block;
+  margin-top: -8px;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.signal-button.active {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: #22c55e;
+}
+
+.hazard-button {
+  width: 100%;
+  height: 66px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(127, 29, 29, 0.26);
+  color: #ef4444;
+  font-size: 54px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.hazard-button.active {
+  background: rgba(239, 68, 68, 0.28);
+  box-shadow: inset 0 0 0 2px #ef4444;
+}
+
+.small-action-grid {
+  grid-column: 1 / 3;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  gap: 10px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  padding: 14px;
+  text-align: center;
+}
+
+.power-button,
+.horn-button {
+  width: 74px;
+  height: 74px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.7);
+  color: white;
+  font-size: 34px;
+  cursor: pointer;
+}
+
+.power-button.active {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.ignition-card p {
+  margin: 8px 0 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.brake-button {
+  width: 100%;
+  height: 94px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ef4444, #991b1b);
+  color: white;
+  font-size: 34px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.brake-button span {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.brake-button.active {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
+}
+
+.bottom-control-panel {
+  grid-column: 1 / 3;
+  display: grid;
+  grid-template-columns: 230px 120px 180px 1fr;
+  gap: 10px;
+}
+
+.steering-card,
+.gear-card,
+.speed-card,
+.vehicle-state-card {
+  padding: 16px;
+}
+
+.steering-wheel {
+  width: 128px;
+  height: 128px;
+  margin: 0 auto 8px;
+  border: 10px solid #111827;
+  border-radius: 999px;
+  background: radial-gradient(circle, #334155 0 25%, #020617 26% 100%);
+}
+
+.steering-wheel-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.2s ease;
+}
+
+.wheel-spoke {
+  position: absolute;
+  background: #94a3b8;
+  border-radius: 999px;
+}
+
+.wheel-spoke.horizontal {
+  top: 50%;
+  left: 18%;
+  width: 64%;
+  height: 8px;
+  transform: translateY(-50%);
+}
+
+.wheel-spoke.vertical {
+  left: 50%;
+  top: 20%;
+  width: 8px;
+  height: 60%;
+  transform: translateX(-50%);
+}
+
+.steering-actions {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.steering-actions button {
+  height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #dbeafe;
+  cursor: pointer;
+}
+
+.steering-actions span {
+  text-align: center;
+  color: #38bdf8;
+  font-weight: 900;
+}
+
+.gear-buttons {
+  display: grid;
+  gap: 8px;
+}
+
+.gear-buttons button {
+  height: 36px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.65);
+  color: #cbd5e1;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.gear-buttons button.active {
+  border-color: #22c55e;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.speed-value {
+  margin-top: 8px;
+  color: #38bdf8;
+  font-size: 76px;
+  line-height: 0.95;
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(56, 189, 248, 0.4);
+}
+
+.speed-value span {
+  display: block;
+  margin-top: 8px;
+  font-size: 16px;
+  color: #7dd3fc;
+}
+
+.speed-scale {
+  display: grid;
+  grid-template-columns: 24px 1fr 34px;
+  gap: 6px;
+  align-items: center;
+  margin-top: 14px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.speed-scale div {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.24);
+}
+
+.speed-scale i {
+  display: block;
+  height: 100%;
+  background: #38bdf8;
+}
+
+.vehicle-state-card {
+  display: grid;
+  gap: 8px;
+}
+
+.vehicle-state-card h3 {
+  text-align: left;
+}
+
+.state-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.state-row strong {
+  color: #38bdf8;
+}
+
+.state-row strong.good {
+  color: #22c55e;
+}
+
+.state-row strong.bad {
+  color: #ef4444;
+}
+
+.remote-footer {
+  max-width: 1360px;
+  height: 36px;
+  margin: 10px auto 0;
+  padding: 0 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.9);
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+@media (max-width: 1080px) {
+  .remote-top-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .remote-status-group {
+    justify-content: flex-start;
+  }
+
+  .remote-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .right-control-panel,
+  .bottom-control-panel {
+    grid-column: auto;
+  }
+
+  .bottom-control-panel {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* =========================
+   Remote Control One-Screen Fit
+   ========================= */
+
+.remote-page {
+  height: 100vh;
+  min-height: 100vh;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+
+.remote-top-bar {
+  height: 74px;
+  margin-bottom: 8px;
+  grid-template-columns: 180px 1fr 330px;
+}
+
+.remote-title-box h1 {
+  font-size: 24px;
+}
+
+.remote-title-box p {
+  font-size: 12px;
+}
+
+.remote-layout {
+  height: calc(100vh - 126px);
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: minmax(0, 1fr) 190px;
+  gap: 8px;
+  max-width: 1280px;
+}
+
+.camera-main-panel {
+  min-height: 0;
+  height: 100%;
+}
+
+.camera-sub-panel {
+  height: 185px;
+}
+
+.right-control-panel {
+  grid-template-rows: 185px 100px 1fr;
+  gap: 8px;
+}
+
+.signal-panel,
+.hazard-panel {
+  padding: 10px;
+}
+
+.signal-button {
+  height: 52px;
+  font-size: 34px;
+}
+
+.hazard-button {
+  height: 52px;
+  font-size: 44px;
+}
+
+.small-action-grid {
+  gap: 8px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  padding: 10px;
+}
+
+.power-button,
+.horn-button {
+  width: 58px;
+  height: 58px;
+  font-size: 28px;
+}
+
+.brake-button {
+  height: 76px;
+  font-size: 28px;
+}
+
+.brake-button span {
+  font-size: 14px;
+}
+
+.bottom-control-panel {
+  height: 190px;
+  grid-template-columns: 210px 105px 165px 1fr;
+  gap: 8px;
+}
+
+.steering-card,
+.gear-card,
+.speed-card,
+.vehicle-state-card {
+  padding: 10px 12px;
+}
+
+.steering-wheel {
+  width: 98px;
+  height: 98px;
+  border-width: 8px;
+  margin-bottom: 6px;
+}
+
+.steering-actions {
+  grid-template-columns: 1fr 52px 1fr;
+  gap: 6px;
+}
+
+.steering-actions button {
+  height: 28px;
+}
+
+.gear-buttons {
+  gap: 5px;
+}
+
+.gear-buttons button {
+  height: 28px;
+  font-size: 15px;
+}
+
+.speed-value {
+  font-size: 54px;
+  margin-top: 2px;
+}
+
+.speed-value span {
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.speed-scale {
+  margin-top: 8px;
+}
+
+.vehicle-state-card {
+  gap: 5px;
+}
+
+.state-row {
+  font-size: 12px;
+}
+
+.remote-footer {
+  height: 28px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.camera-placeholder p {
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+.camera-label {
+  top: 10px;
+  left: 12px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* =========================
+   Remote Control Keyboard Layout Fix
+   ========================= */
+
+.bottom-control-panel.compact {
+  grid-template-columns: 1.25fr 110px 170px 1fr;
+}
+
+.keyboard-card,
+.input-state-card {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.96));
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.keyboard-card h3,
+.input-state-card h3 {
+  margin: 0 0 8px;
+  color: #dbeafe;
+  font-size: 15px;
+  text-align: center;
+}
+
+.keyboard-command {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #cbd5e1;
+  font-size: 13px;
+  text-align: center;
+}
+
+.keyboard-command strong {
+  color: #38bdf8;
+}
+
+.arrow-key-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  grid-template-rows: repeat(2, 54px);
+  gap: 8px;
+  justify-content: center;
+}
+
+.arrow-key {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  color: #e5f1ff;
+  font-size: 24px;
+  font-weight: 900;
+  box-shadow: inset 0 -4px 0 rgba(2, 6, 23, 0.45);
+}
+
+.arrow-key span {
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.arrow-key.active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.22);
+  color: #38bdf8;
+  box-shadow:
+    0 0 18px rgba(56, 189, 248, 0.35),
+    inset 0 -4px 0 rgba(14, 116, 144, 0.45);
+}
+
+.input-state-card {
+  display: grid;
+  gap: 5px;
+}
+
+.input-state-card .state-row {
+  font-size: 12px;
+}
+
+/* 기존 핸들/차량상태 공간 영향 제거 */
+.steering-card,
+.vehicle-state-card {
+  display: none;
+}
+
+/* =========================
+   Remote Control No-Cut Layout Fix
+   ========================= */
+
+.remote-page {
+  height: 100vh;
+  min-height: 100vh;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+
+.remote-top-bar {
+  height: 68px;
+  margin-bottom: 8px;
+  grid-template-columns: 180px 1fr 330px;
+}
+
+.remote-title-box h1 {
+  font-size: 23px;
+}
+
+.remote-title-box p {
+  font-size: 12px;
+}
+
+/* 전체 레이아웃: 위 카메라 영역 줄이고 아래 조작 영역 확보 */
+.remote-layout {
+  height: calc(100vh - 112px);
+  max-width: 1280px;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: minmax(0, 1fr) 235px;
+  gap: 8px;
+}
+
+/* 전방 카메라 */
+.camera-main-panel {
+  min-height: 0;
+  height: 100%;
+}
+
+/* 오른쪽 패널 */
+.right-control-panel {
+  grid-template-rows: 175px 92px 1fr;
+  gap: 8px;
+}
+
+.camera-sub-panel {
+  height: 175px;
+}
+
+/* 오른쪽 버튼들 더 작게 */
+.signal-panel,
+.hazard-panel {
+  padding: 8px;
+}
+
+.signal-panel h3,
+.hazard-panel h3,
+.ignition-card h3,
+.horn-card h3,
+.brake-card h3 {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.signal-button {
+  height: 48px;
+  font-size: 30px;
+}
+
+.signal-button span {
+  font-size: 10px;
+}
+
+.hazard-button {
+  height: 48px;
+  font-size: 38px;
+}
+
+.small-action-grid {
+  gap: 8px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  padding: 8px;
+}
+
+.power-button,
+.horn-button {
+  width: 54px;
+  height: 54px;
+  font-size: 25px;
+}
+
+.brake-button {
+  height: 72px;
+  font-size: 26px;
+}
+
+.brake-button span {
+  font-size: 13px;
+}
+
+/* 아래 조작 패널 높이 확보 */
+.bottom-control-panel,
+.bottom-control-panel.compact {
+  height: 235px;
+  grid-template-columns: 1.35fr 105px 165px 1fr;
+  gap: 8px;
+}
+
+/* 키보드 모듈 */
+.keyboard-card,
+.gear-card,
+.speed-card,
+.input-state-card {
+  min-height: 0;
+  height: 100%;
+  padding: 10px 12px;
+}
+
+.keyboard-card h3,
+.gear-card h3,
+.speed-card h3,
+.input-state-card h3 {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.keyboard-command {
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.arrow-key-grid {
+  grid-template-columns: repeat(3, 64px);
+  grid-template-rows: repeat(2, 48px);
+  gap: 7px;
+}
+
+.arrow-key {
+  font-size: 22px;
+}
+
+.arrow-key span {
+  font-size: 10px;
+}
+
+/* 기어 */
+.gear-buttons {
+  gap: 6px;
+}
+
+.gear-buttons button {
+  height: 32px;
+  font-size: 15px;
+}
+
+/* 속도 */
+.speed-value {
+  margin-top: 6px;
+  font-size: 58px;
+}
+
+.speed-value span {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.speed-scale {
+  margin-top: 10px;
+}
+
+/* 입력 상태 */
+.input-state-card {
+  overflow: hidden;
+}
+
+.input-state-card .state-row {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.state-row {
+  margin-bottom: 4px;
+}
+
+/* 푸터 */
+.remote-footer {
+  height: 26px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+/* 카메라 텍스트 */
+.camera-placeholder p {
+  margin-bottom: 18px;
+  font-size: 15px;
+}
+
+.camera-label {
+  top: 10px;
+  left: 12px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* =========================
+   Remote Control Final Layout
+   - remove input state
+   - add buzzer control
+   ========================= */
+
+.input-state-card {
+  display: none !important;
+}
+
+/* 전체 화면 높이 고정 */
+.remote-page {
+  height: 100vh;
+  min-height: 100vh;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+
+/* 위쪽 헤더 */
+.remote-top-bar {
+  height: 68px;
+  margin-bottom: 8px;
+}
+
+/* 전체 레이아웃 */
+.remote-layout {
+  height: calc(100vh - 112px);
+  max-width: 1280px;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: minmax(0, 1fr) 225px;
+  gap: 8px;
+}
+
+/* 전방 카메라 영역 */
+.camera-main-panel {
+  min-height: 0;
+  height: 100%;
+}
+
+/* 오른쪽 제어 패널 */
+.right-control-panel {
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: 175px 104px 118px;
+  gap: 8px;
+}
+
+.camera-sub-panel {
+  height: 175px;
+}
+
+/* 방향지시등 / 비상등 */
+.signal-panel,
+.hazard-panel {
+  height: 104px;
+  min-height: 0;
+  padding: 8px;
+}
+
+.signal-panel h3,
+.hazard-panel h3,
+.ignition-card h3,
+.horn-card h3,
+.brake-card h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.signal-button {
+  height: 46px;
+  font-size: 30px;
+}
+
+.signal-button span {
+  font-size: 10px;
+}
+
+.hazard-button {
+  height: 46px;
+  font-size: 38px;
+}
+
+/* 시동 / 경적 / 브레이크 */
+.small-action-grid {
+  height: 118px;
+  min-height: 0;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  height: 118px;
+  min-height: 0;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.power-button,
+.horn-button {
+  width: 48px;
+  height: 48px;
+  font-size: 23px;
+}
+
+.ignition-card p {
+  margin: 5px 0 0;
+  font-size: 11px;
+}
+
+.brake-button {
+  height: 64px;
+  font-size: 24px;
+  border-radius: 12px;
+}
+
+.brake-button span {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+/* 하단 패널 */
+.bottom-control-panel.compact {
+  height: 225px;
+  grid-template-columns: 1.45fr 105px 165px 260px;
+  gap: 8px;
+}
+
+/* 키보드 / 기어 / 속도 / 부저 공통 */
+.keyboard-card,
+.gear-card,
+.speed-card,
+.buzzer-card {
+  height: 100%;
+  min-height: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.96));
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.keyboard-card h3,
+.gear-card h3,
+.speed-card h3,
+.buzzer-card h3 {
+  margin: 0 0 8px;
+  color: #dbeafe;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* 키보드 */
+.keyboard-command {
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.arrow-key-grid {
+  grid-template-columns: repeat(3, 64px);
+  grid-template-rows: repeat(2, 48px);
+  gap: 7px;
+}
+
+.arrow-key {
+  font-size: 22px;
+}
+
+.arrow-key span {
+  font-size: 10px;
+}
+
+/* 기어 */
+.gear-buttons {
+  gap: 6px;
+}
+
+.gear-buttons button {
+  height: 32px;
+  font-size: 15px;
+}
+
+/* 속도 */
+.speed-value {
+  margin-top: 6px;
+  font-size: 58px;
+}
+
+.speed-value span {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.speed-scale {
+  margin-top: 10px;
+}
+
+/* 부저 제어 */
+.buzzer-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.buzzer-button {
+  width: 74px;
+  height: 74px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #cbd5e1;
+  font-size: 34px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.buzzer-button.active {
+  border-color: #facc15;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.16);
+  box-shadow: 0 0 20px rgba(250, 204, 21, 0.28);
+}
+
+.buzzer-state {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.buzzer-state strong {
+  color: #38bdf8;
+}
+
+.buzzer-button.active + .buzzer-state strong {
+  color: #facc15;
+}
+
+.buzzer-desc {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 푸터 */
+.remote-footer {
+  height: 26px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+/* =========================
+   Remote Control Layout Rebalance
+   ========================= */
+
+/* 전체 오른쪽 패널이 아래 모듈과 겹치지 않도록 위쪽 영역 확보 */
+.remote-layout {
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: minmax(0, 1fr) 210px;
+  gap: 8px;
+}
+
+/* 오른쪽 패널 내부를 더 짧고 안정적으로 */
+.right-control-panel {
+  grid-template-rows: 165px 96px 108px;
+  gap: 7px;
+  overflow: hidden;
+}
+
+.camera-sub-panel {
+  height: 165px;
+}
+
+.signal-panel,
+.hazard-panel {
+  height: 96px;
+  padding: 7px;
+}
+
+.signal-button {
+  height: 42px;
+  font-size: 28px;
+}
+
+.hazard-button {
+  height: 42px;
+  font-size: 34px;
+}
+
+/* 시동/경적/브레이크 영역 더 축소 */
+.small-action-grid {
+  height: 108px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 7px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  height: 108px;
+  padding: 7px;
+}
+
+.ignition-card h3,
+.horn-card h3,
+.brake-card h3 {
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.power-button,
+.horn-button {
+  width: 44px;
+  height: 44px;
+  font-size: 21px;
+}
+
+.ignition-card p {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.brake-button {
+  height: 56px;
+  font-size: 22px;
+}
+
+.brake-button span {
+  font-size: 11px;
+}
+
+/* 하단 모듈 재배치: 키보드 줄이고, 부저 줄임 */
+.bottom-control-panel.compact {
+  height: 210px;
+  grid-template-columns: 1.15fr 100px 155px 190px;
+  gap: 8px;
+}
+
+/* 키보드 모듈 축소 */
+.keyboard-card {
+  padding: 9px 10px;
+}
+
+.keyboard-card h3 {
+  font-size: 13px;
+  margin-bottom: 7px;
+}
+
+.keyboard-command {
+  padding: 6px 9px;
+  margin-bottom: 7px;
+  font-size: 11px;
+}
+
+.arrow-key-grid {
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(2, 43px);
+  gap: 6px;
+}
+
+.arrow-key {
+  font-size: 20px;
+}
+
+.arrow-key span {
+  font-size: 9px;
+}
+
+/* 기어/속도도 같이 살짝 압축 */
+.gear-card,
+.speed-card,
+.buzzer-card {
+  padding: 9px 10px;
+}
+
+.gear-card h3,
+.speed-card h3,
+.buzzer-card h3 {
+  font-size: 13px;
+  margin-bottom: 7px;
+}
+
+.gear-buttons {
+  gap: 5px;
+}
+
+.gear-buttons button {
+  height: 29px;
+  font-size: 14px;
+}
+
+.speed-value {
+  font-size: 50px;
+  margin-top: 4px;
+}
+
+.speed-value span {
+  font-size: 12px;
+}
+
+.speed-scale {
+  margin-top: 8px;
+}
+
+/* 부저 모듈 축소 */
+.buzzer-card {
+  gap: 6px;
+}
+
+.buzzer-button {
+  width: 58px;
+  height: 58px;
+  font-size: 28px;
+}
+
+.buzzer-state {
+  font-size: 12px;
+}
+
+.buzzer-desc {
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+/* 푸터가 너무 아래 패널을 밀지 않게 */
+.remote-footer {
+  height: 24px;
+  margin-top: 5px;
+  font-size: 10px;
+}
+
+.remote-layout {
+  height: calc(100vh - 112px);
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  grid-template-rows: minmax(0, 1fr) 210px;
+  gap: 8px;
+}
+
+.remote-footer {
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* =========================
+   Remote Control Append Fix
+   - 기존 코드 유지
+   - 아래에 그대로 추가
+   ========================= */
+
+/* 전체 가로 폭은 현재 넓어진 상태 유지 */
+.remote-layout {
+  width: 100%;
+  max-width: 1400px;
+  grid-template-columns: 1fr 360px;
+  grid-template-rows: minmax(0, 1fr) 210px;
+}
+
+/* 오른쪽 패널이 위 카메라 영역 + 아래 영역까지 차지하도록 수정 */
+.right-control-panel {
+  grid-column: 2 / 3;
+  grid-row: 1 / 3;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 165px 96px 108px 1fr;
+  gap: 7px;
+
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 후방 카메라 */
+.camera-sub-panel {
+  grid-column: 1 / 3;
+  height: 165px;
+}
+
+/* 시동 / 경적 / 브레이크 */
+.small-action-grid {
+  grid-column: 1 / 3;
+  height: 108px;
+}
+
+/* 부저 제어를 오른쪽 패널 안 마지막 줄로 고정 */
+.side-buzzer-card {
+  grid-column: 1 / 3;
+  height: 100%;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-rows: 26px 1fr;
+  column-gap: 12px;
+  align-items: center;
+
+  padding: 10px 12px;
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  z-index: auto;
+}
+
+/* 부저 제목 */
+.side-buzzer-card h3 {
+  grid-column: 1 / 3;
+  margin: 0;
+  color: #dbeafe;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* 부저 버튼 */
+.side-buzzer-card .buzzer-button {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+
+  width: 54px;
+  height: 54px;
+  font-size: 25px;
+}
+
+/* 부저 상태 텍스트 */
+.side-buzzer-card .buzzer-state {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.side-buzzer-card .buzzer-state strong {
+  color: #38bdf8;
+}
+
+/* 하단 패널은 전방 카메라 아래에만 배치 */
+.bottom-control-panel.compact {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+
+  height: 210px;
+  display: grid;
+  grid-template-columns: 360px 180px 110px;
+  gap: 8px;
+}
+
+/* 하단 순서: 키보드 조종 입력 / 속도 / 기어 */
+.keyboard-card {
+  order: 1;
+}
+
+.speed-card {
+  order: 2;
+}
+
+.gear-card {
+  order: 3;
+}
+
+/* 각 모듈 가로 크기 고정 */
+.keyboard-card {
+  width: 360px;
+}
+
+.speed-card {
+  width: 180px;
+}
+
+.gear-card {
+  width: 110px;
+}
+
+/* 키보드 모듈이 너무 커지지 않도록 조정 */
+.keyboard-card {
+  padding: 9px 10px;
+}
+
+.keyboard-card h3 {
+  font-size: 13px;
+  margin-bottom: 7px;
+}
+
+.keyboard-command {
+  padding: 6px 9px;
+  margin-bottom: 7px;
+  font-size: 11px;
+}
+
+.arrow-key-grid {
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(2, 42px);
+  gap: 6px;
+}
+
+.arrow-key {
+  font-size: 20px;
+}
+
+.arrow-key span {
+  font-size: 9px;
+}
+
+/* 속도 카드 크기 조정 */
+.speed-value {
+  font-size: 52px;
+  margin-top: 4px;
+}
+
+.speed-value span {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.speed-scale {
+  margin-top: 8px;
+}
+
+/* 기어 카드 크기 조정 */
+.gear-buttons {
+  gap: 5px;
+}
+
+.gear-buttons button {
+  height: 29px;
+  font-size: 14px;
+}
+
+/* 오른쪽 버튼들이 잘리지 않도록 재조정 */
+.signal-panel,
+.hazard-panel {
+  height: 96px;
+  padding: 7px;
+}
+
+.signal-button {
+  height: 42px;
+  font-size: 28px;
+}
+
+.hazard-button {
+  height: 42px;
+  font-size: 34px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  height: 108px;
+  padding: 7px;
+}
+
+.power-button,
+.horn-button {
+  width: 44px;
+  height: 44px;
+  font-size: 21px;
+}
+
+.brake-button {
+  height: 56px;
+  font-size: 22px;
+}
+
+.brake-button span {
+  font-size: 11px;
+}
+
+/* 푸터 폭도 현재 화면 폭에 맞춤 */
+.remote-footer {
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* =====================================================
+   Remote Control Final Override
+   - CSS 맨 아래에 그대로 추가
+   - 전체 화면 가로 확장
+   - 오른쪽 패널 모듈 크기 재정렬
+   - 부저 제어 모듈 정상 크기 고정
+   ===================================================== */
+
+/* Vite 기본 #root 폭 제한이 남아있을 경우 제거 */
+#root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 페이지 전체를 브라우저 가로폭에 맞춤 */
+.remote-page {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  padding: 8px 18px;
+  overflow: hidden;
+}
+
+/* 헤더도 전체 폭 기준 */
+.remote-top-bar {
+  width: 100%;
+  max-width: none;
+  height: 68px;
+  grid-template-columns: 210px 1fr 390px;
+  margin: 0 0 8px;
+}
+
+/* 핵심: 전체 레이아웃 폭 제한 제거 */
+.remote-layout {
+  width: 100%;
+  max-width: none;
+  height: calc(100vh - 112px);
+  margin: 0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: minmax(0, 1fr) 210px;
+  gap: 8px;
+}
+
+/* 전방 카메라 */
+.camera-main-panel {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+/* 오른쪽 패널: 아래 영역까지 차지 */
+.right-control-panel {
+  grid-column: 2 / 3;
+  grid-row: 1 / 3;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 170px 96px 110px 104px;
+  gap: 8px;
+
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 후방 카메라 */
+.camera-sub-panel {
+  grid-column: 1 / 3;
+  height: 170px;
+  min-height: 0;
+}
+
+/* 방향지시등 / 비상등 */
+.signal-panel,
+.hazard-panel {
+  height: 96px;
+  min-height: 0;
+  padding: 8px;
+}
+
+.signal-panel h3,
+.hazard-panel h3,
+.ignition-card h3,
+.horn-card h3,
+.brake-card h3,
+.side-buzzer-card h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.signal-buttons {
+  gap: 7px;
+}
+
+.signal-button {
+  height: 46px;
+  font-size: 28px;
+}
+
+.signal-button span {
+  margin-top: -6px;
+  font-size: 10px;
+}
+
+.hazard-button {
+  height: 46px;
+  font-size: 34px;
+}
+
+/* 시동 / 경적 / 브레이크 */
+.small-action-grid {
+  grid-column: 1 / 3;
+  height: 110px;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  height: 110px;
+  min-height: 0;
+  padding: 8px;
+}
+
+.power-button,
+.horn-button {
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+}
+
+.ignition-card p {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.brake-button {
+  height: 58px;
+  font-size: 22px;
+}
+
+.brake-button span {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+/* 부저 제어: 오른쪽 패널 마지막 줄에 고정 */
+.side-buzzer-card {
+  grid-column: 1 / 3;
+  height: 104px;
+  min-height: 0;
+
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  z-index: auto;
+
+  padding: 10px 12px;
+
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-rows: 24px 1fr;
+  column-gap: 12px;
+  row-gap: 6px;
+  align-items: center;
+}
+
+.side-buzzer-card h3 {
+  grid-column: 1 / 3;
+  grid-row: 1 / 2;
+  text-align: center;
+}
+
+.side-buzzer-card .buzzer-button {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+
+  width: 54px;
+  height: 54px;
+  font-size: 25px;
+}
+
+.side-buzzer-card .buzzer-state {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+
+  margin: 0;
+  font-size: 13px;
+  text-align: left;
+  line-height: 1.35;
+}
+
+/* 하단 패널: 전방 카메라 아래에만 배치 */
+.bottom-control-panel.compact {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+
+  height: 210px;
+  min-width: 0;
+
+  display: grid;
+  grid-template-columns: 360px 180px 110px;
+  gap: 8px;
+}
+
+/* 하단 표시 순서: 키보드 / 속도 / 기어 */
+.keyboard-card {
+  order: 1;
+  width: 360px;
+}
+
+.speed-card {
+  order: 2;
+  width: 180px;
+}
+
+.gear-card {
+  order: 3;
+  width: 110px;
+}
+
+/* 하단 카드 공통 */
+.keyboard-card,
+.speed-card,
+.gear-card {
+  height: 210px;
+  min-height: 0;
+  padding: 9px 10px;
+}
+
+/* 키보드 조종 입력 */
+.keyboard-card h3,
+.speed-card h3,
+.gear-card h3 {
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+
+.keyboard-command {
+  margin-bottom: 7px;
+  padding: 6px 9px;
+  font-size: 11px;
+}
+
+.arrow-key-grid {
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(2, 42px);
+  gap: 6px;
+}
+
+.arrow-key {
+  font-size: 20px;
+}
+
+.arrow-key span {
+  font-size: 9px;
+}
+
+/* 속도 */
+.speed-value {
+  margin-top: 4px;
+  font-size: 52px;
+}
+
+.speed-value span {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.speed-scale {
+  margin-top: 8px;
+}
+
+/* 기어 */
+.gear-buttons {
+  gap: 5px;
+}
+
+.gear-buttons button {
+  height: 29px;
+  font-size: 14px;
+}
+
+/* 푸터도 전체 폭 기준 */
+.remote-footer {
+  width: 100%;
+  max-width: none;
+  height: 24px;
+  margin: 5px 0 0;
+  font-size: 10px;
+}
+
+/* =====================================================
+   Remote Control No Scroll Final Fix
+   - CSS 맨 아래에 추가
+   - 스크롤 없이 한 화면에 맞춤
+   ===================================================== */
+
+/* Vite 기본 여백/폭 제한 제거 */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* 전체 페이지를 브라우저 화면 안에 고정 */
+.remote-page {
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  padding: 6px 14px;
+  overflow: hidden;
+}
+
+/* 상단 바 높이 축소 */
+.remote-top-bar {
+  width: 100%;
+  height: 58px;
+  margin-bottom: 6px;
+  grid-template-columns: 200px 1fr 380px;
+}
+
+.remote-back-button {
+  height: 34px;
+  font-size: 13px;
+}
+
+.remote-title-box h1 {
+  font-size: 20px;
+}
+
+.remote-title-box p {
+  font-size: 11px;
+}
+
+.connection-pill,
+.battery-pill {
+  height: 32px;
+  font-size: 12px;
+}
+
+/* 핵심: 전체 레이아웃 높이를 헤더+푸터 제외한 값으로 고정 */
+.remote-layout {
+  width: 100%;
+  max-width: none;
+  height: calc(100vh - 96px);
+  margin: 0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: minmax(0, 1fr) 185px;
+  gap: 7px;
+}
+
+/* 전방 카메라 */
+.camera-main-panel {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 오른쪽 패널 전체 */
+.right-control-panel {
+  grid-column: 2 / 3;
+  grid-row: 1 / 3;
+
+  height: 100%;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 145px 82px 96px 88px;
+  gap: 7px;
+
+  overflow: hidden;
+}
+
+/* 후방 카메라 */
+.camera-sub-panel {
+  grid-column: 1 / 3;
+  height: 145px;
+  min-height: 0;
+}
+
+/* 카메라 라벨/텍스트 축소 */
+.camera-label {
+  top: 8px;
+  left: 10px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.camera-placeholder p {
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+/* 방향지시등 / 비상등 */
+.signal-panel,
+.hazard-panel {
+  height: 82px;
+  min-height: 0;
+  padding: 6px;
+}
+
+.signal-panel h3,
+.hazard-panel h3,
+.ignition-card h3,
+.horn-card h3,
+.brake-card h3,
+.side-buzzer-card h3 {
+  margin: 0 0 5px;
+  font-size: 12px;
+}
+
+.signal-buttons {
+  gap: 6px;
+}
+
+.signal-button {
+  height: 38px;
+  font-size: 24px;
+}
+
+.signal-button span {
+  margin-top: -5px;
+  font-size: 9px;
+}
+
+.hazard-button {
+  height: 38px;
+  font-size: 30px;
+}
+
+/* 시동 / 경적 / 브레이크 */
+.small-action-grid {
+  grid-column: 1 / 3;
+  height: 96px;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 7px;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  height: 96px;
+  min-height: 0;
+  padding: 6px;
+}
+
+.power-button,
+.horn-button {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+
+.ignition-card p {
+  margin-top: 3px;
+  font-size: 9px;
+}
+
+.brake-button {
+  height: 50px;
+  font-size: 20px;
+}
+
+.brake-button span {
+  margin-top: 1px;
+  font-size: 10px;
+}
+
+/* 부저 제어 */
+.side-buzzer-card {
+  grid-column: 1 / 3;
+  height: 88px;
+  min-height: 0;
+
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  z-index: auto;
+
+  padding: 8px 10px;
+
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  grid-template-rows: 22px 1fr;
+  column-gap: 10px;
+  align-items: center;
+}
+
+.side-buzzer-card h3 {
+  grid-column: 1 / 3;
+  grid-row: 1 / 2;
+  text-align: center;
+}
+
+.side-buzzer-card .buzzer-button {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+}
+
+.side-buzzer-card .buzzer-state {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+/* 하단 패널 */
+.bottom-control-panel.compact {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+
+  height: 185px;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: 340px 170px 105px;
+  gap: 7px;
+}
+
+/* 하단 순서: 키보드 / 속도 / 기어 */
+.keyboard-card {
+  order: 1;
+  width: 340px;
+}
+
+.speed-card {
+  order: 2;
+  width: 170px;
+}
+
+.gear-card {
+  order: 3;
+  width: 105px;
+}
+
+/* 하단 카드 공통 */
+.keyboard-card,
+.speed-card,
+.gear-card {
+  height: 185px;
+  min-height: 0;
+  padding: 8px 9px;
+}
+
+.keyboard-card h3,
+.speed-card h3,
+.gear-card h3 {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+/* 키보드 입력 */
+.keyboard-command {
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  font-size: 10px;
+}
+
+.arrow-key-grid {
+  grid-template-columns: repeat(3, 54px);
+  grid-template-rows: repeat(2, 38px);
+  gap: 5px;
+}
+
+.arrow-key {
+  font-size: 18px;
+}
+
+.arrow-key span {
+  font-size: 8px;
+}
+
+/* 속도 */
+.speed-value {
+  margin-top: 2px;
+  font-size: 46px;
+}
+
+.speed-value span {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.speed-scale {
+  margin-top: 7px;
+}
+
+/* 기어 */
+.gear-buttons {
+  gap: 4px;
+}
+
+.gear-buttons button {
+  height: 26px;
+  font-size: 13px;
+}
+
+/* 푸터 */
+.remote-footer {
+  width: 100%;
+  max-width: none;
+  height: 22px;
+  margin: 4px 0 0;
+  padding: 0 14px;
+  font-size: 9px;
+}
+
+/* =====================================================
+   Remote Control No Scroll Absolute Fix
+   - CSS 맨 아래에 추가
+   - 브라우저 가로/세로 스크롤 제거
+   ===================================================== */
+
+/* 브라우저 자체 스크롤 제거 */
+html,
+body,
+#root {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* 100vw 쓰면 가로 스크롤 생길 수 있어서 width:100% 사용 */
+.remote-page {
+  position: fixed !important;
+  inset: 0 !important;
+
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+
+  padding: 8px 12px !important;
+  overflow: hidden !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 상단바 고정 높이 */
+.remote-top-bar {
+  flex: 0 0 58px !important;
+  width: 100% !important;
+  height: 58px !important;
+  margin: 0 0 6px 0 !important;
+
+  display: grid !important;
+  grid-template-columns: 220px 1fr 390px !important;
+  align-items: center !important;
+}
+
+/* 메인 영역은 남은 높이만 사용 */
+.remote-layout {
+  flex: 1 1 auto !important;
+
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 360px !important;
+  grid-template-rows: minmax(0, 1fr) 185px !important;
+  gap: 7px !important;
+
+  overflow: hidden !important;
+}
+
+/* 푸터 고정 높이 */
+.remote-footer {
+  flex: 0 0 22px !important;
+
+  width: 100% !important;
+  max-width: none !important;
+  height: 22px !important;
+  margin: 4px 0 0 0 !important;
+  padding: 0 14px !important;
+
+  font-size: 9px !important;
+  overflow: hidden !important;
+}
+
+/* 전방 카메라 */
+.camera-main-panel {
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+
+  height: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+
+/* 오른쪽 패널 */
+.right-control-panel {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 3 !important;
+
+  height: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  grid-template-rows: 145px 82px 96px 88px !important;
+  gap: 7px !important;
+
+  overflow: hidden !important;
+}
+
+/* 후방 카메라 */
+.camera-sub-panel {
+  grid-column: 1 / 3 !important;
+  height: 145px !important;
+  min-height: 0 !important;
+}
+
+/* 방향지시등 / 비상등 */
+.signal-panel,
+.hazard-panel {
+  height: 82px !important;
+  min-height: 0 !important;
+  padding: 6px !important;
+}
+
+.signal-panel h3,
+.hazard-panel h3,
+.ignition-card h3,
+.horn-card h3,
+.brake-card h3,
+.side-buzzer-card h3 {
+  margin: 0 0 5px !important;
+  font-size: 12px !important;
+}
+
+.signal-button {
+  height: 38px !important;
+  font-size: 24px !important;
+}
+
+.signal-button span {
+  margin-top: -5px !important;
+  font-size: 9px !important;
+}
+
+.hazard-button {
+  height: 38px !important;
+  font-size: 30px !important;
+}
+
+/* 시동 / 경적 / 브레이크 */
+.small-action-grid {
+  grid-column: 1 / 3 !important;
+
+  height: 96px !important;
+  min-height: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr !important;
+  gap: 7px !important;
+}
+
+.ignition-card,
+.horn-card,
+.brake-card {
+  height: 96px !important;
+  min-height: 0 !important;
+  padding: 6px !important;
+}
+
+.power-button,
+.horn-button {
+  width: 40px !important;
+  height: 40px !important;
+  font-size: 20px !important;
+}
+
+.ignition-card p {
+  margin-top: 3px !important;
+  font-size: 9px !important;
+}
+
+.brake-button {
+  height: 50px !important;
+  font-size: 20px !important;
+}
+
+.brake-button span {
+  margin-top: 1px !important;
+  font-size: 10px !important;
+}
+
+/* 부저 제어 */
+.side-buzzer-card {
+  grid-column: 1 / 3 !important;
+
+  height: 88px !important;
+  min-height: 0 !important;
+
+  position: relative !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  z-index: auto !important;
+
+  padding: 8px 10px !important;
+
+  display: grid !important;
+  grid-template-columns: 56px 1fr !important;
+  grid-template-rows: 22px 1fr !important;
+  column-gap: 10px !important;
+  align-items: center !important;
+}
+
+.side-buzzer-card h3 {
+  grid-column: 1 / 3 !important;
+  grid-row: 1 / 2 !important;
+  text-align: center !important;
+}
+
+.side-buzzer-card .buzzer-button {
+  grid-column: 1 / 2 !important;
+  grid-row: 2 / 3 !important;
+
+  width: 46px !important;
+  height: 46px !important;
+  font-size: 22px !important;
+}
+
+.side-buzzer-card .buzzer-state {
+  grid-column: 2 / 3 !important;
+  grid-row: 2 / 3 !important;
+
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  text-align: left !important;
+}
+
+/* 하단 패널 */
+.bottom-control-panel.compact {
+  grid-column: 1 / 2 !important;
+  grid-row: 2 / 3 !important;
+
+  height: 185px !important;
+  min-height: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: 340px 170px 105px !important;
+  gap: 7px !important;
+
+  overflow: hidden !important;
+}
+
+/* 하단 순서: 키보드 / 속도 / 기어 */
+.keyboard-card {
+  order: 1 !important;
+  width: 340px !important;
+}
+
+.speed-card {
+  order: 2 !important;
+  width: 170px !important;
+}
+
+.gear-card {
+  order: 3 !important;
+  width: 105px !important;
+}
+
+.keyboard-card,
+.speed-card,
+.gear-card {
+  height: 185px !important;
+  min-height: 0 !important;
+  padding: 8px 9px !important;
+}
+
+.keyboard-card h3,
+.speed-card h3,
+.gear-card h3 {
+  margin-bottom: 6px !important;
+  font-size: 14px !important;
+}
+
+.keyboard-command {
+  margin-bottom: 7px !important;
+  padding: 5px 8px !important;
+  font-size: 11px !important;
+}
+
+.arrow-key-grid {
+  grid-template-columns: repeat(3, 60px) !important;
+  grid-template-rows: repeat(2, 45px) !important;
+  gap: 5px !important;
+}
+
+.arrow-key {
+  font-size: 15px !important;
+}
+
+.arrow-key span {
+  font-size: 9px !important;
+}
+
+.speed-value {
+  margin-top: 2px !important;
+  font-size: 46px !important;
+}
+
+.speed-value span {
+  margin-top: 7px !important;
+  font-size: 11px !important;
+}
+
+.speed-scale {
+  margin-top: 7px !important;
+}
+
+.gear-buttons {
+  gap: 4px !important;
+}
+
+.gear-buttons button {
+  height: 26px !important;
+  font-size: 13px !important;
+}
+
+/* =====================================================
+   Remote Footer Time Only Fix
+   - CSS 맨 아래에 추가
+   - 하단 footer에서 시간만 표시
+   ===================================================== */
+
+.remote-footer {
+  height: 32px !important;
+  margin-top: 6px !important;
+  padding: 0 18px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+/* footer 안의 모든 문구 숨김 */
+.remote-footer span {
+  display: none !important;
+}
+
+/* 마지막 span, 즉 현재 시간만 표시 */
+.remote-footer span:last-child {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  min-width: 190px;
+  height: 24px;
+
+  padding: 0 12px;
+  border-radius: 999px;
+
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* 전방 카메라 가로 줄이기 */
+.remote-layout {
+  grid-template-columns: minmax(0, 1fr) 480px !important;
+}
+
+/* 후방 카메라 높이 증가 */
+.right-control-panel {
+  grid-template-rows: 190px 82px 96px 88px !important;
+}
+
+.camera-sub-panel {
+  height: 190px !important;
+}
+
+/* =====================================================
+   Fine Fix
+   - 키보드 버튼 크기 그대로
+   - 화살표/텍스트 간격만 축소
+   - '속도' 제목은 그대로
+   - 속도값 + km/h + 게이지 묶음만 가운데 정렬
+   ===================================================== */
+
+/* 키보드 버튼 자체 크기/위치는 건드리지 않음 */
+.arrow-key {
+  line-height: 1 !important;
+}
+
+/* 화살표와 전진/후진/좌회전/우회전 텍스트 간격만 줄임 */
+.arrow-key span {
+  margin-top: 5px !important;
+  line-height: 1 !important;
+}
+
+/* 속도 카드 전체 레이아웃은 기존 유지 */
+.speed-card {
+  display: block !important;
+  text-align: center !important;
+}
+
+/* '속도' 제목은 기존 위치 유지 */
+.speed-card h3 {
+  margin: 0 0 6px !important;
+  text-align: center !important;
+}
+
+/* 숫자 + km/h만 가운데 정렬 */
+.speed-value {
+  width: 100% !important;
+  margin: 17px 0 0 !important;
+  text-align: center !important;
+}
+
+/* km/h 텍스트도 숫자 바로 아래 가운데 */
+.speed-value span {
+  display: block !important;
+  margin-top: 4px !important;
+  text-align: center !important;
+}
+
+/* 게이지도 가운데 정렬 */
+.speed-scale {
+  width: 100% !important;
+  margin: 14px auto 0 !important;
+  display: grid !important;
+  grid-template-columns: 24px 1fr 34px !important;
+  align-items: center !important;
+}
+
+/* =====================================================
+   Move Ignition + Brake To Bottom Panel
+   - CSS 맨 아래에 추가
+   ===================================================== */
+
+/* 하단 패널 칸 재배치: 키보드 / 속도 / 기어 / 시동 / 브레이크 */
+.bottom-control-panel.compact {
+  grid-column: 1 / 2 !important;
+  grid-row: 2 / 3 !important;
+
+  height: 185px !important;
+  min-height: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: 340px 170px 105px 140px 185px !important;
+  gap: 7px !important;
+
+  overflow: hidden !important;
+}
+
+/* 하단 모듈 순서 고정 */
+.keyboard-card {
+  order: 1 !important;
+  width: 340px !important;
+}
+
+.speed-card {
+  order: 2 !important;
+  width: 170px !important;
+}
+
+.gear-card {
+  order: 3 !important;
+  width: 105px !important;
+}
+
+.bottom-ignition-card {
+  order: 4 !important;
+  width: 140px !important;
+}
+
+.bottom-brake-card {
+  order: 5 !important;
+  width: 185px !important;
+}
+
+/* 하단 시동/브레이크 카드 크기 */
+.bottom-ignition-card,
+.bottom-brake-card {
+  height: 185px !important;
+  min-height: 0 !important;
+  padding: 12px 10px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(30, 41, 59, 0.95),
+    rgba(15, 23, 42, 0.96)
+  ) !important;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24) !important;
+  overflow: hidden !important;
+}
+
+/* 하단 시동/브레이크 제목 */
+.bottom-ignition-card h3,
+.bottom-brake-card h3 {
+  margin: 0 0 12px !important;
+  color: #dbeafe !important;
+  font-size: 14px !important;
+  text-align: center !important;
+}
+
+/* 하단 시동 버튼 */
+.bottom-ignition-card .power-button {
+  width: 58px !important;
+  height: 58px !important;
+  font-size: 28px !important;
+}
+
+.bottom-ignition-card p {
+  margin: 8px 0 0 !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+}
+
+/* 하단 브레이크 버튼 */
+.bottom-brake-card .brake-button {
+  width: 130px !important;
+  height: 72px !important;
+  border-radius: 14px !important;
+  font-size: 28px !important;
+}
+
+.bottom-brake-card .brake-button span {
+  margin-top: 3px !important;
+  font-size: 13px !important;
+}
+
+/* 오른쪽 패널에서는 경적만 한 줄로 사용 */
+.horn-only-grid {
+  grid-column: 1 / 3 !important;
+  height: 96px !important;
+  min-height: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+}
+
+/* 오른쪽 경적 카드가 한 줄 전체를 차지 */
+.horn-only-grid .horn-card {
+  width: 100% !important;
+  height: 96px !important;
+  min-height: 0 !important;
+  padding: 8px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 오른쪽 경적 버튼 크기 */
+.horn-only-grid .horn-button {
+  width: 48px !important;
+  height: 48px !important;
+  font-size: 23px !important;
+}
+
+/* 오른쪽 패널 높이 재조정: 후방 / 방향+비상 / 경적 / 부저 */
+.right-control-panel {
+  grid-template-rows: 190px 82px 96px 88px !important;
+}
+
+/* 기존 small-action-grid 안 카드 높이 영향 제거 */
+.small-action-grid .ignition-card:not(.bottom-ignition-card),
+.small-action-grid .brake-card:not(.bottom-brake-card) {
+  display: none !important;
+}
+
+/* =====================================================
+   Bottom Panel Reorder + Brake State Fix
+   - 시동을 가장 왼쪽으로 이동
+   - 시동/브레이크 제목 상단 정렬
+   - 브레이크 버튼 텍스트 제거
+   - 브레이크 OFF 회색 / ON 빨간색
+   ===================================================== */
+
+/* 하단 패널 순서 및 칸 구성 */
+.bottom-control-panel.compact {
+  grid-column: 1 / 2 !important;
+  grid-row: 2 / 3 !important;
+
+  height: 185px !important;
+  min-height: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: 140px 340px 170px 105px 185px !important;
+  gap: 7px !important;
+
+  overflow: hidden !important;
+}
+
+/* 순서 고정: 시동 / 키보드 / 속도 / 기어 / 브레이크 */
+.bottom-ignition-card {
+  order: 1 !important;
+  width: 140px !important;
+}
+
+.keyboard-card {
+  order: 2 !important;
+  width: 340px !important;
+}
+
+.speed-card {
+  order: 3 !important;
+  width: 170px !important;
+}
+
+.gear-card {
+  order: 4 !important;
+  width: 105px !important;
+}
+
+.bottom-brake-card {
+  order: 5 !important;
+  width: 185px !important;
+}
+
+/* 하단 시동/브레이크 카드 공통 */
+.bottom-ignition-card,
+.bottom-brake-card {
+  height: 185px !important;
+  min-height: 0 !important;
+  padding: 8px 10px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(30, 41, 59, 0.95),
+    rgba(15, 23, 42, 0.96)
+  ) !important;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24) !important;
+  overflow: hidden !important;
+}
+
+/* 시동/브레이크 제목을 다른 하단 모듈처럼 상단에 배치 */
+.bottom-ignition-card h3,
+.bottom-brake-card h3 {
+  width: 100% !important;
+  margin: 0 0 18px !important;
+
+  color: #dbeafe !important;
+  font-size: 14px !important;
+  text-align: center !important;
+}
+
+/* 시동 버튼 위치 */
+.bottom-ignition-card .power-button {
+  width: 58px !important;
+  height: 58px !important;
+  font-size: 28px !important;
+}
+
+.bottom-ignition-card p {
+  margin: 8px 0 0 !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+}
+
+/* 브레이크 버튼: 기본 OFF 상태는 회색 */
+.bottom-brake-card .brake-button {
+  width: 130px !important;
+  height: 72px !important;
+
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  border-radius: 14px !important;
+
+  background: linear-gradient(180deg, #475569, #1f2937) !important;
+  color: #e5e7eb !important;
+
+  font-size: 30px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+/* 브레이크 ON 상태는 빨간색 */
+.bottom-brake-card .brake-button.active {
+  border-color: rgba(248, 113, 113, 0.7) !important;
+  background: linear-gradient(180deg, #ef4444, #991b1b) !important;
+  color: white !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;
+}
+
+/* 혹시 남아있는 브레이크 span 텍스트가 있으면 숨김 */
+.bottom-brake-card .brake-button span {
+  display: none !important;
+}
+
+/* =====================================================
+   Bottom Ignition / Brake Inner Center Fix
+   - 제목은 상단 유지
+   - 버튼 영역은 모듈 가운데 정렬
+   ===================================================== */
+
+.bottom-ignition-card,
+.bottom-brake-card {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+/* 제목은 다른 하단 모듈처럼 상단에 고정 */
+.bottom-ignition-card h3,
+.bottom-brake-card h3 {
+  width: 100% !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  text-align: center !important;
+}
+
+/* 시동 버튼 + 켜짐/꺼짐 텍스트를 카드 가운데로 */
+.bottom-ignition-card .power-button {
+  margin-top: 26px !important;
+}
+
+.bottom-ignition-card p {
+  margin-top: 8px !important;
+}
+
+/* 브레이크 버튼을 카드 가운데로 */
+.bottom-brake-card .brake-button {
+  margin-top: 30px !important;
+}
+
+/* =====================================================
+   Brake On/Off Text Fix
+   - 브레이크도 시동처럼 켜짐/꺼짐 표시
+   ===================================================== */
+
+.bottom-brake-card p {
+  margin: 8px 0 0 !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+}
+
+/* 브레이크 버튼 + 텍스트 가운데 정렬 */
+.bottom-brake-card .brake-button {
+  margin-top: 20px !important;
+}
+
+/* 시동과 브레이크 높이감 맞추기 */
+.bottom-ignition-card .power-button {
+  margin-top: 28px !important;
+}
+
+/* 하단 패널 전체를 오른쪽으로 이동 */
+.bottom-control-panel.compact {
+  margin-left: 15px !important;
+}
+
+/* 하단 패널 각 모듈 간격 넓히기 */
+.bottom-control-panel.compact {
+  gap: 15px !important;
+}
+
+/* =====================================================
+   Right Panel Module Gap + Height Fix
+   - 후방 카메라 크기 유지
+   - 방향지시등/비상등 높이 증가
+   - 모듈 간격 조정
+   - 겹침 방지
+   ===================================================== */
+
+/* 오른쪽 패널 전체 배치 */
+.right-control-panel {
+  grid-template-rows: 190px 130px 100px 100px !important;
+  gap: 15px !important;
+
+  overflow: hidden !important;
+}
+
+/* 후방 카메라 크기 유지 */
+.camera-sub-panel {
+  height: 190px !important;
+}
+
+/* 방향지시등 / 비상등 높이 증가 */
+.signal-panel,
+.hazard-panel {
+  height: 130px !important;
+  min-height: 0 !important;
+  padding: 8px !important;
+}
+
+/* 방향지시등 / 비상등 제목 */
+.signal-panel h3,
+.hazard-panel h3 {
+  margin: 0 0 8px !important;
+  font-size: 13px !important;
+}
+
+/* 방향지시등 버튼 */
+.signal-buttons {
+  gap: 8px !important;
+}
+
+.signal-button {
+  height: 70px !important;
+  font-size: 30px !important;
+}
+
+.signal-button span {
+  margin-top: -6px !important;
+  font-size: 10px !important;
+}
+
+/* 비상등 버튼 */
+.hazard-button {
+  height: 70px !important;
+  font-size: 36px !important;
+}
+
+/* 경적 모듈: 방향지시등이 커진 만큼 살짝 줄임 */
+.horn-only-grid,
+.horn-only-grid .horn-card {
+  height: 100px !important;
+  min-height: 0 !important;
+}
+
+/* 경적 내부 정렬 */
+.horn-only-grid .horn-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 7px !important;
+}
+
+.horn-only-grid .horn-card h3 {
+  margin: 0 0 6px !important;
+  font-size: 13px !important;
+}
+
+/* 경적 버튼 */
+.horn-only-grid .horn-button {
+  width: 50px !important;
+  height: 50px !important;
+  font-size: 25px !important;
+}
+
+/* 부저 모듈 */
+.side-buzzer-card {
+  height: 100px !important;
+  min-height: 0 !important;
+  padding: 8px 10px !important;
+}
+
+/* 부저 제목 */
+.side-buzzer-card h3 {
+  margin: 0 !important;
+  font-size: 13px !important;
+}
+
+/* 부저 버튼 */
+.side-buzzer-card .buzzer-button {
+  width: 46px !important;
+  height: 46px !important;
+  font-size: 22px !important;
+}
+
+/* 부저 상태 텍스트 */
+.side-buzzer-card .buzzer-state {
+  font-size: 12px !important;
+}
+
+/* =====================================================
+   Right Panel Minor Fix
+   - 부저 제목 제외 내용 가운데 정렬
+   - 후방 카메라 제외 오른쪽 모듈 전체 아래로 이동
+   ===================================================== */
+
+
+/* 부저 모듈: 제목은 상단 유지 */
+.side-buzzer-card {
+  display: grid !important;
+  grid-template-columns: 1fr auto auto 1fr !important;
+  grid-template-rows: 24px 1fr !important;
+  column-gap: 12px !important;
+  align-items: center !important;
+}
+
+/* 부저 제목 */
+.side-buzzer-card h3 {
+  grid-column: 1 / 5 !important;
+  grid-row: 1 / 2 !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+/* 부저 버튼: 제목 제외한 내용 영역 가운데 */
+.side-buzzer-card .buzzer-button {
+  grid-column: 2 / 3 !important;
+  grid-row: 2 / 3 !important;
+  justify-self: center !important;
+  align-self: center !important;
+}
+
+/* 부저 상태 텍스트: 버튼 옆 가운데 */
+.side-buzzer-card .buzzer-state {
+  grid-column: 3 / 4 !important;
+  grid-row: 2 / 3 !important;
+  margin: 0 !important;
+  justify-self: center !important;
+  align-self: center !important;
+  text-align: left !important;
+}
+
+
+
+/* 후방 카메라 높이 증가 */
+.right-control-panel {
+  grid-template-rows: 213px 130px 100px 100px !important;
+}
+
+.camera-sub-panel {
+  height: 213px !important;
+}
+
+/* =====================================================
+   Horn Active State Fix
+   - 경적 누르는 동안 활성 표시
+   ===================================================== */
+
+.horn-only-grid .horn-card p {
+  margin: 6px 0 0 !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+}
+
+.horn-only-grid .horn-button {
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  color: #cbd5e1 !important;
+}
+
+.horn-only-grid .horn-button.active {
+  border-color: #facc15 !important;
+  background: rgba(250, 204, 21, 0.18) !important;
+  color: #facc15 !important;
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.28) !important;
+}
+
+/* 경적 버튼 동그라미 크기만 조정 */
+.horn-only-grid .horn-button {
+  width: 50px !important;
+  height: 50px !important;
+  font-size: 25px !important;
+  aspect-ratio: 1 / 1 !important;
+}
+
+/* =====================================================
+   Right Panel Horn Height + Gap Fix
+   - 경적 모듈 높이 증가
+   - 오른쪽 패널 모듈 간격 축소
+   ===================================================== */
+
+/* 오른쪽 패널 전체 배치
+   190px = 후방 카메라
+   130px = 방향지시등 / 비상등
+   120px = 경적
+   100px = 부저 제어
+   gap 8px = 모듈 간격
+*/
+.right-control-panel {
+  grid-template-rows: 212px 130px 120px 100px !important;
+  gap: 8px !important;
+}
+
+/* 경적 모듈 높이 증가 */
+.horn-only-grid,
+.horn-only-grid .horn-card {
+  height: 120px !important;
+  min-height: 0 !important;
+}
+
+/* 경적 내부 위치는 유지하면서 카드 안에서만 정렬 */
+.horn-only-grid .horn-card {
+  padding: 8px !important;
+}
+
+/* 경적 버튼 크기는 필요하면 여기서만 조정 */
+.horn-only-grid .horn-button {
+  width: 56px !important;
+  height: 56px !important;
+  font-size: 25px !important;
+}
+
+/* =====================================================
+   Horn Title Align + Remove Horn State Text
+   - 경적 제목을 다른 오른쪽 모듈 제목과 동일하게 상단 배치
+   - 경적 켜짐/꺼짐 텍스트 제거
+   ===================================================== */
+
+/* 경적 카드 내부를 위에서부터 배치 */
+.horn-only-grid .horn-card {
+  justify-content: flex-start !important;
+  padding: 8px !important;
+}
+
+/* 경적 제목 높이/위치 통일 */
+.horn-only-grid .horn-card h3 {
+  margin: 0 0 8px !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+
+/* 경적 버튼은 카드 안에서 가운데 */
+.horn-only-grid .horn-button {
+  margin: 0 auto !important;
+}
+
+/* 경적 켜짐/꺼짐 텍스트 제거 */
+.horn-only-grid .horn-card p {
+  display: none !important;
+}
+
+/* 경적 모듈 내부 내용만 아래로 이동 */
+.horn-only-grid .horn-card h3 {
+  margin-bottom: 10px !important;
+}
+
+.horn-only-grid .horn-button {
+  margin-top: 8px !important;
+}
+
+/* =====================================================
+   Live Camera Stream
+   - UDP -> Gateway MJPEG stream 표시
+   ===================================================== */
+
+.camera-stream-box {
+  width: 100% !important;
+  height: 100% !important;
+  background: #020617 !important;
+  overflow: hidden !important;
+  border-radius: inherit !important;
+}
+
+.live-camera-stream {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* 기존 placeholder 배경이 남아 영향을 주지 않도록 */
+.camera-main-panel .camera-placeholder,
+.camera-sub-panel .camera-placeholder {
+  display: none !important;
+}
