@@ -1,4 +1,6 @@
 import asyncio
+import time
+import socket
 from urllib.parse import urlparse
 
 import requests
@@ -12,9 +14,60 @@ from config import (
 )
 
 from gateway_someip_client import request_accident_list_from_media
+from udp_video_bridge import UDPVideoBridge
 
 
 app = Flask(__name__)
+
+MEDIA_IP = "192.168.20.2"
+
+MAIN_ECU_IP = "192.168.20.3"      # MAIN 보드 IP로 수정
+MAIN_CONTROL_PORT = 6000          # MAIN 팀과 정한 포트로 수정
+
+front_bridge = UDPVideoBridge(MEDIA_IP, 5000)
+rear_bridge = front_bridge
+
+front_bridge.start()
+
+def generate_mjpeg_stream(bridge: UDPVideoBridge):
+    last_sent_frame = None
+
+    while True:
+        frame, last_frame_time = bridge.get_latest_frame()
+
+        if frame is None:
+            time.sleep(0.05)
+            continue
+
+        # 같은 프레임을 너무 빠르게 반복 전송하지 않도록 최소 대기
+        if frame is last_sent_frame:
+            time.sleep(0.03)
+            continue
+
+        last_sent_frame = frame
+
+        yield (
+            b"--frame\r\n"
+            b"Content-Type: image/jpeg\r\n\r\n" +
+            frame +
+            b"\r\n"
+        )
+
+
+@app.get("/live/front")
+def live_front():
+    return Response(
+        generate_mjpeg_stream(front_bridge),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
+
+
+@app.get("/live/rear")
+def live_rear():
+    return Response(
+        generate_mjpeg_stream(rear_bridge),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
 
 vehicle_state = {
     "vehicle_id": 1,
@@ -29,7 +82,7 @@ def add_cors_headers(response):
     개발/시연용 설정.
     """
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
@@ -162,6 +215,90 @@ def start_remote_control():
         "remote_control_text": "ON",
     })
 
+def send_control_to_main(command_data: dict) -> bool:
+    """
+    Gateway -> MAIN 제어 명령 전송 함수.
+
+    지금은 UDP JSON으로 보내는 형태.
+    MAIN 쪽 통신 규약이 SOME/IP로 확정되어 있으면,
+    이 함수 내부만 SOME/IP method call로 바꾸면 됨.
+    """
+
+    try:
+        payload = {
+            "vehicle_id": vehicle_state["vehicle_id"],
+            "timestamp": time.time(),
+            **command_data,
+        }
+
+        message = str(payload).encode("utf-8")
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(message, (MAIN_ECU_IP, MAIN_CONTROL_PORT))
+        sock.close()
+
+        print(f"[Control -> MAIN] {payload}")
+
+        return True
+
+    except OSError as e:
+        print(f"[Control -> MAIN] failed: {e}")
+        return False
+
+
+@app.post("/control")
+def control_command():
+    """
+    React 원격 조종 화면에서 들어오는 제어 명령 처리.
+
+    React -> Gateway:
+    POST /control
+
+    Gateway -> MAIN:
+    send_control_to_main()
+    """
+
+    command_data = request.get_json(silent=True)
+
+    if not command_data:
+        return jsonify({
+            "result": "BAD_REQUEST",
+            "error_code": 1,
+            "message": "control command body is empty",
+        }), 400
+
+    command_type = command_data.get("type")
+    value = command_data.get("value")
+
+    if command_type is None:
+        return jsonify({
+            "result": "BAD_REQUEST",
+            "error_code": 1,
+            "message": "type field is required",
+        }), 400
+
+    # 차량 상태도 Gateway에 일부 반영
+    if command_type == "drive":
+        if value in ["FORWARD", "BACKWARD", "LEFT", "RIGHT", "FORWARD_LEFT", "FORWARD_RIGHT", "BACKWARD_LEFT", "BACKWARD_RIGHT"]:
+            vehicle_state["driving_state"] = 1
+        elif value == "STOP":
+            vehicle_state["driving_state"] = 0
+
+    ok = send_control_to_main(command_data)
+
+    if not ok:
+        return jsonify({
+            "result": "INTERNAL_ERROR",
+            "error_code": 2,
+            "message": "failed to send control command to MAIN",
+            "command": command_data,
+        }), 502
+
+    return jsonify({
+        "result": "OK",
+        "command": command_data,
+    })
+
 
 @app.post("/remote-control/stop")
 def stop_remote_control():
@@ -265,4 +402,5 @@ if __name__ == "__main__":
         port=GATEWAY_PROXY_PORT,
         debug=True,
         threaded=True,
+        use_reloader=False,
     )
