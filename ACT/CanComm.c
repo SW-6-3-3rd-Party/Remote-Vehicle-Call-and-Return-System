@@ -27,7 +27,7 @@
  */
 
 #define CAN_BAUDRATE              (500000U)
-#define CAN_TX_ID                 (0x322U)
+#define CAN_TX_ID                 (ACT_STATUS_CAN_ID)
 
 #define CAN_MODULE_RAM_BASE       (0xF0200000U)
 #define CAN_TX_BUFFER_COUNT       (2U)
@@ -40,6 +40,21 @@
 #define CAN_STB_PORT              (&MODULE_P20)
 #define CAN_STB_PIN               (6U)
 
+/*
+ * CRC-8/SAE-J1850
+ * Polynomial = 0x1D
+ * Initial    = 0xFF
+ * XorOut     = 0xFF
+ * No reflection
+ *
+ * ActStatusMsg에서는 Byte5에 CRC를 넣기 때문에
+ * CRC 계산 대상은 Byte0~Byte4이다.
+ */
+#define ACT_STATUS_CRC8_POLY      (0x1DU)
+#define ACT_STATUS_CRC8_INIT      (0xFFU)
+#define ACT_STATUS_CRC8_XOROUT    (0xFFU)
+#define ACT_STATUS_CRC8_DATA_LEN  (5U)
+
 static IfxCan_Can        g_canModule;
 static IfxCan_Can_Node   g_canNode;
 
@@ -48,7 +63,11 @@ volatile uint32 g_debugCanTxOkCount = 0U;
 volatile uint32 g_debugCanTxBusyCount = 0U;
 volatile uint32 g_debugCanLastStatus = 0U;
 
+volatile uint8 g_debugActStatusAliveCounter = 0U;
+volatile uint8 g_debugActStatusLastCrc = 0U;
+
 static uint8 g_txBufferIndex = 0U;
+static uint8 g_actStatusAliveCounter = 0U;
 
 static const IfxCan_Can_Pins g_canPins =
 {
@@ -69,10 +88,64 @@ static void CanComm_EnableTransceiver(void)
                              IfxPort_OutputIdx_general);
 
     /*
-     * Important:
      * CAN transceiver normal mode
      */
     IfxPort_setPinLow(CAN_STB_PORT, CAN_STB_PIN);
+}
+
+static uint8 CanComm_CalcCrc8(const uint8* data, uint32 length)
+{
+    uint32 i;
+    uint8 bit;
+    uint8 crc;
+
+    crc = ACT_STATUS_CRC8_INIT;
+
+    for (i = 0U; i < length; i++)
+    {
+        crc = (uint8)(crc ^ data[i]);
+
+        for (bit = 0U; bit < 8U; bit++)
+        {
+            if ((crc & 0x80U) != 0U)
+            {
+                crc = (uint8)((crc << 1U) ^ ACT_STATUS_CRC8_POLY);
+            }
+            else
+            {
+                crc = (uint8)(crc << 1U);
+            }
+        }
+    }
+
+    crc = (uint8)(crc ^ ACT_STATUS_CRC8_XOROUT);
+
+    return crc;
+}
+
+static uint8 CanComm_LimitGearState(uint8 gearState)
+{
+    if ((gearState == ACT_STATUS_GEAR_P) ||
+        (gearState == ACT_STATUS_GEAR_R) ||
+        (gearState == ACT_STATUS_GEAR_N) ||
+        (gearState == ACT_STATUS_GEAR_D))
+    {
+        return gearState;
+    }
+
+    return ACT_STATUS_GEAR_P;
+}
+
+static uint8 CanComm_LimitSteeringState(uint8 steeringState)
+{
+    if ((steeringState == ACT_STATUS_STEERING_LEFT) ||
+        (steeringState == ACT_STATUS_STEERING_CENTER) ||
+        (steeringState == ACT_STATUS_STEERING_RIGHT))
+    {
+        return steeringState;
+    }
+
+    return ACT_STATUS_STEERING_CENTER;
 }
 
 void CanComm_Init(void)
@@ -133,72 +206,72 @@ void CanComm_Init(void)
     g_debugCanTxOkCount = 0U;
     g_debugCanTxBusyCount = 0U;
     g_debugCanLastStatus = 0U;
+
+    g_debugActStatusAliveCounter = 0U;
+    g_debugActStatusLastCrc = 0U;
+
     g_txBufferIndex = 0U;
+    g_actStatusAliveCounter = 0U;
 }
 
-void CanComm_SendDriveStatus(MotorState state,
-                             uint32 dutyPercent,
-                             uint32 speedKmhX100,
-                             uint32 pulsePerSecond,
-                             sint32 encoderCount)
+void CanComm_SendActStatus(uint32 speedKmhX100,
+                           uint8 gearState,
+                           uint8 steeringState)
 {
     IfxCan_Message txMsg;
     uint32 txData[2];
-
+    uint8 txByte[8];
     uint16 speed16;
-    uint16 pps16;
-    sint16 cnt16;
+    uint8 crc8;
+    uint8 aliveCounter;
     IfxCan_Status status;
 
     g_debugCanTxCallCount++;
-
-    if (dutyPercent > 100U)
-    {
-        dutyPercent = 100U;
-    }
 
     if (speedKmhX100 > 65535U)
     {
         speedKmhX100 = 65535U;
     }
 
-    if (pulsePerSecond > 65535U)
-    {
-        pulsePerSecond = 65535U;
-    }
-
-    if (encoderCount > 32767)
-    {
-        encoderCount = 32767;
-    }
-    else if (encoderCount < -32768)
-    {
-        encoderCount = -32768;
-    }
-
     speed16 = (uint16)speedKmhX100;
-    pps16 = (uint16)pulsePerSecond;
-    cnt16 = (sint16)encoderCount;
+    gearState = CanComm_LimitGearState(gearState);
+    steeringState = CanComm_LimitSteeringState(steeringState);
+    aliveCounter = g_actStatusAliveCounter;
+
+    /*
+     * ActStatusMsg 0x200
+     *
+     * Byte 0~1 : speed_kmh_x100, Little Endian
+     * Byte 2   : gear_state
+     * Byte 3   : steering_state
+     * Byte 4   : alive_counter
+     * Byte 5   : crc8 over Byte0~Byte4
+     * Byte 6~7 : reserved 0x00
+     */
+    txByte[0] = (uint8)(speed16 & 0x00FFU);
+    txByte[1] = (uint8)((speed16 >> 8U) & 0x00FFU);
+    txByte[2] = gearState;
+    txByte[3] = steeringState;
+    txByte[4] = aliveCounter;
+    txByte[5] = 0U;
+    txByte[6] = 0U;
+    txByte[7] = 0U;
+
+    crc8 = CanComm_CalcCrc8(txByte, ACT_STATUS_CRC8_DATA_LEN);
+    txByte[5] = crc8;
 
     txData[0] = 0U;
     txData[1] = 0U;
 
-    /*
-     * Byte0 = state
-     * Byte1 = duty
-     * Byte2~3 = rpm
-     * Byte4~5 = pulse/sec
-     * Byte6~7 = encoder count
-     */
-    txData[0] |= ((uint32)((uint8)state) & 0xFFU) << 0U;
-    txData[0] |= ((uint32)((uint8)dutyPercent) & 0xFFU) << 8U;
-    txData[0] |= ((uint32)(speed16 & 0x00FFU)) << 16U;
-    txData[0] |= ((uint32)((speed16 >> 8U) & 0x00FFU)) << 24U;
+    txData[0] |= ((uint32)txByte[0]) << 0U;
+    txData[0] |= ((uint32)txByte[1]) << 8U;
+    txData[0] |= ((uint32)txByte[2]) << 16U;
+    txData[0] |= ((uint32)txByte[3]) << 24U;
 
-    txData[1] |= ((uint32)(pps16 & 0x00FFU)) << 0U;
-    txData[1] |= ((uint32)((pps16 >> 8U) & 0x00FFU)) << 8U;
-    txData[1] |= ((uint32)(((uint16)cnt16) & 0x00FFU)) << 16U;
-    txData[1] |= ((uint32)((((uint16)cnt16) >> 8U) & 0x00FFU)) << 24U;
+    txData[1] |= ((uint32)txByte[4]) << 0U;
+    txData[1] |= ((uint32)txByte[5]) << 8U;
+    txData[1] |= ((uint32)txByte[6]) << 16U;
+    txData[1] |= ((uint32)txByte[7]) << 24U;
 
     IfxCan_Can_initMessage(&txMsg);
 
@@ -210,6 +283,10 @@ void CanComm_SendDriveStatus(MotorState state,
     txMsg.bufferNumber = g_txBufferIndex;
     txMsg.storeInTxFifoQueue = FALSE;
 
+    /*
+     * 현재 최종 통합 구조에서는 ActCan_Init()이 CAN0 Node0을 초기화한다.
+     * 따라서 송신도 ActCan_GetCanNode()로 같은 Node를 사용한다.
+     */
     status = IfxCan_Can_sendMessage(ActCan_GetCanNode(), &txMsg, txData);
 
     g_debugCanLastStatus = (uint32)status;
@@ -219,6 +296,15 @@ void CanComm_SendDriveStatus(MotorState state,
         g_debugCanTxBusyCount++;
         return;
     }
+
+    /*
+     * 실제 송신 성공 시에만 alive_counter 증가.
+     * 255 다음에는 uint8 overflow로 0으로 순환한다.
+     */
+    g_actStatusAliveCounter++;
+
+    g_debugActStatusAliveCounter = g_actStatusAliveCounter;
+    g_debugActStatusLastCrc = crc8;
 
     g_debugCanTxOkCount++;
 

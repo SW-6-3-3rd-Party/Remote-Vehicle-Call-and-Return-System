@@ -19,8 +19,7 @@ IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
 
 /*
  * 바퀴 지름
- * 네가 말한 6.5mm 기준.
- * 만약 실제가 6.5cm면 0.065f로 바꿔야 함.
+ * 네가 말한 6.5cm 기준.
  */
 #define PI_F                         (3.1415926f)
 #define WHEEL_DIAMETER_M             (0.065f)
@@ -28,6 +27,10 @@ IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
 
 /*
  * 상태 송신 주기
+ *
+ * ACT -> MAIN ActStatusMsg는 100ms마다 송신한다.
+ * MAIN은 alive_counter가 300ms 동안 증가하지 않으면
+ * CAN Bus 1 통신 두절(EVT_CAN1_LOST)로 판단한다.
  */
 #define CAN_STATUS_TX_PERIOD_MS     (100U)
 
@@ -100,9 +103,49 @@ static void App_UpdateCanRxFor1ms(void)
     }
 }
 
+static uint8 App_GetCurrentGearStateForCan(void)
+{
+    /*
+     * ActCan_GetGearState()
+     * 0=P, 1=R, 2=N, 3=D
+     */
+    return (uint8)ActCan_GetGearState();
+}
+
+static uint8 App_GetCurrentSteeringStateForCan(void)
+{
+    SteeringState steeringState;
+
+    steeringState = Steering_GetState();
+
+    /*
+     * Servo.h 기준:
+     * STEERING_LEFT   = 0
+     * STEERING_MIDDLE = 1
+     * STEERING_RIGHT  = 2
+     *
+     * CAN Status 기준:
+     * 0=LEFT, 1=FRONT/CENTER, 2=RIGHT
+     */
+    switch (steeringState)
+    {
+        case STEERING_LEFT:
+            return ACT_STATUS_STEERING_LEFT;
+
+        case STEERING_RIGHT:
+            return ACT_STATUS_STEERING_RIGHT;
+
+        case STEERING_MIDDLE:
+        default:
+            return ACT_STATUS_STEERING_CENTER;
+    }
+}
+
 static void App_SendStatusIfNeeded(void)
 {
-    sint32 encoderCountForCan;
+    uint32 speedKmhX100;
+    uint8 gearState;
+    uint8 steeringState;
 
     g_canStatusTxTimerMs++;
 
@@ -114,21 +157,22 @@ static void App_SendStatusIfNeeded(void)
     g_canStatusTxTimerMs = 0U;
 
     /*
-     * Yellow 단상 엔코더는 실제 방향 판별 불가.
-     * 대신 현재 모터 상태가 REVERSE면 count 부호만 반전해서 보낸다.
+     * ActStatusMsg 0x200
+     *
+     * Byte 0~1 : speed_kmh_x100
+     * Byte 2   : gear_state
+     * Byte 3   : steering_state
+     * Byte 4   : alive_counter
+     * Byte 5   : crc8
+     * Byte 6~7 : reserved
      */
-    encoderCountForCan = Encoder_GetCount();
+    speedKmhX100 = App_ConvertPulsePerSecondToKmhX100(Encoder_GetPulsePerSecond());
+    gearState = App_GetCurrentGearStateForCan();
+    steeringState = App_GetCurrentSteeringStateForCan();
 
-    if (MotorControl_GetState() == MOTOR_STATE_REVERSE)
-    {
-        encoderCountForCan = -encoderCountForCan;
-    }
-
-    CanComm_SendDriveStatus(MotorControl_GetState(),
-                            MotorControl_GetDutyPercent(),
-                            App_ConvertPulsePerSecondToKmhX100(Encoder_GetPulsePerSecond()),
-                            Encoder_GetPulsePerSecond(),
-                            encoderCountForCan);
+    CanComm_SendActStatus(speedKmhX100,
+                          gearState,
+                          steeringState);
 
     g_debugStatusTxCount++;
 }
@@ -151,8 +195,9 @@ static void App_Update1ms(void)
 {
     /*
      * 1. CAN 명령 수신 처리
-     *    ID 0x321 명령을 받으면 ActCan.c 내부에서
-     *    accel / brake / gear / steering에 따라 Motor, Steering 상태를 바꾼다.
+     *    MAIN -> ACT 명령을 받으면 ActCan.c 내부에서
+     *    accel / brake / gear / steering / control_mode / safety_override에 따라
+     *    Motor, Steering 상태를 바꾼다.
      */
     App_UpdateCanRxFor1ms();
 
@@ -168,7 +213,7 @@ static void App_Update1ms(void)
 
     /*
      * 4. 100ms마다 상태 CAN 송신
-     *    ID 0x322
+     *    ID 0x200
      */
     App_SendStatusIfNeeded();
 
