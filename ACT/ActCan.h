@@ -5,22 +5,25 @@
 #include "IfxCan_Can.h"
 
 /*
+ * ======================================================
  * ACT command CAN protocol
- * CAN ID : 0x100, Standard ID, Classical CAN, DLC 8
+ * MAIN -> ACT, period 20ms
+ * CAN ID : 0x321, Standard ID, Classical CAN, DLC 8
  *
- * Byte 0 : accel_key        0=not pressed, 1=pressed
- * Byte 1 : steering_key     0=NULL/center return, 1=left, 2=right
- * Byte 2 : brake_key        0=not pressed, 1=pressed
+ * Byte 0 : accel_key        0=accel off, 1=accel on
+ * Byte 1 : steering_key     0=NULL/center return, 1=LEFT, 2=RIGHT
+ * Byte 2 : brake_key        0=brake off, 1=brake on
  * Byte 3 : gear_state       0=P, 1=R, 2=N, 3=D
  * Byte 4 : control_mode     0=Standby, 1=Remote Drive, 2=Diagnostic
  * Byte 5 : safety_override  0=Normal, 1=Force Stop
- * Byte 6 : alive_counter    0~255, increment every command frame
- * Byte 7 : crc8             CRC-8/SAE-J1850 over Byte0~Byte6
+ * Byte 6 : reserved         0x00, ignored by ACT
+ * Byte 7 : reserved         0x00, ignored by ACT
  *
- * CRC-8/SAE-J1850:
- *   Polynomial = 0x1D
- *   Initial    = 0xFF
- *   XorOut     = 0xFF
+ * IMPORTANT:
+ * - This interface does NOT use alive_counter in Byte6.
+ * - This interface does NOT use crc8 in Byte7.
+ * - ACT fail-safe is based on command message timeout.
+ * ======================================================
  */
 #define ACT_CAN_CMD_ID                (0x321U)
 #define ACT_CAN_DLC                   (8U)
@@ -72,18 +75,21 @@ void ActCan_Init(void);
 
 /*
  * Call every 100us in main loop.
- * Applies latest CAN command and performs alive timeout fail-safe.
+ * Applies latest CAN command and performs 20ms-command timeout fail-safe.
  */
 void ActCan_Update100us(void);
 
 uint32 ActCan_GetRxCount(void);
 uint32 ActCan_GetInvalidCount(void);
-uint32 ActCan_GetCrcErrorCount(void);
-uint32 ActCan_GetAliveErrorCount(void);
+uint32 ActCan_GetTimeoutCount(void);
 
 ActGearState ActCan_GetGearState(void);
 ActControlMode ActCan_GetControlMode(void);
 ActSafetyOverride ActCan_GetSafetyOverride(void);
+
+/* Compatibility getters: no CRC/alive in the new interface. Always return 0. */
+uint32 ActCan_GetCrcErrorCount(void);
+uint32 ActCan_GetAliveErrorCount(void);
 uint8 ActCan_GetAliveCounter(void);
 
 IfxCan_Can_Node* ActCan_GetCanNode(void);

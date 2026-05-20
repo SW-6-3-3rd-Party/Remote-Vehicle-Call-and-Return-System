@@ -8,6 +8,7 @@
 #include "Encoder.h"
 #include "ActCan.h"
 #include "CanComm.h"
+#include "PotAdc.h"
 
 IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
 
@@ -28,17 +29,23 @@ IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
 /*
  * 상태 송신 주기
  *
- * ACT -> MAIN ActStatusMsg는 100ms마다 송신한다.
- * MAIN은 alive_counter가 300ms 동안 증가하지 않으면
- * CAN Bus 1 통신 두절(EVT_CAN1_LOST)로 판단한다.
+ * ACT -> MAIN Drive Status는 50ms마다 송신한다.
+ * 새 CAN 인터페이스에서는 status alive_counter/crc8을 사용하지 않는다.
  */
-#define CAN_STATUS_TX_PERIOD_MS     (100U)
+#define CAN_STATUS_TX_PERIOD_MS     (50U)
 
 /*
  * 서보 갱신 주기
  * Steering_Update() 1회가 약 20ms blocking pulse 출력
  */
 #define STEERING_UPDATE_PERIOD_MS   (20U)
+
+/*
+ * 조향 상태 판정 기준
+ * 0deg=LEFT, 90deg=CENTER, 180deg=RIGHT 기준.
+ */
+#define STEERING_CENTER_LOW_DEG     (80U)
+#define STEERING_CENTER_HIGH_DEG    (100U)
 
 /*
  * Debug Watch 변수
@@ -50,6 +57,8 @@ volatile uint32 g_debugRpm = 0;
 volatile uint32 g_debugStatusTxCount = 0;
 volatile uint32 g_debugRxCount = 0;
 volatile uint32 g_debugInvalidRxCount = 0;
+volatile uint8 g_debugCanSteeringState = ACT_STATUS_STEERING_CENTER;
+volatile uint8 g_debugCanSteeringAngleDeg = 90U;
 
 static uint32 g_canStatusTxTimerMs = 0U;
 static uint32 g_steeringUpdateTimerMs = 0U;
@@ -112,33 +121,25 @@ static uint8 App_GetCurrentGearStateForCan(void)
     return (uint8)ActCan_GetGearState();
 }
 
-static uint8 App_GetCurrentSteeringStateForCan(void)
+static uint8 App_GetCurrentSteeringStateForCan(uint8 steeringAngleDeg)
 {
-    SteeringState steeringState;
-
-    steeringState = Steering_GetState();
-
     /*
-     * Servo.h 기준:
-     * STEERING_LEFT   = 0
-     * STEERING_MIDDLE = 1
-     * STEERING_RIGHT  = 2
-     *
-     * CAN Status 기준:
-     * 0=LEFT, 1=FRONT/CENTER, 2=RIGHT
+     * potentiometer angle 기준:
+     * 0deg   근처 = LEFT
+     * 90deg  근처 = CENTER
+     * 180deg 근처 = RIGHT
      */
-    switch (steeringState)
+    if (steeringAngleDeg < STEERING_CENTER_LOW_DEG)
     {
-        case STEERING_LEFT:
-            return ACT_STATUS_STEERING_LEFT;
-
-        case STEERING_RIGHT:
-            return ACT_STATUS_STEERING_RIGHT;
-
-        case STEERING_MIDDLE:
-        default:
-            return ACT_STATUS_STEERING_CENTER;
+        return ACT_STATUS_STEERING_LEFT;
     }
+
+    if (steeringAngleDeg > STEERING_CENTER_HIGH_DEG)
+    {
+        return ACT_STATUS_STEERING_RIGHT;
+    }
+
+    return ACT_STATUS_STEERING_CENTER;
 }
 
 static void App_SendStatusIfNeeded(void)
@@ -146,6 +147,7 @@ static void App_SendStatusIfNeeded(void)
     uint32 speedKmhX100;
     uint8 gearState;
     uint8 steeringState;
+    uint8 steeringAngleDeg;
 
     g_canStatusTxTimerMs++;
 
@@ -157,23 +159,29 @@ static void App_SendStatusIfNeeded(void)
     g_canStatusTxTimerMs = 0U;
 
     /*
-     * ActStatusMsg 0x200
+     * ActStatusMsg
      *
-     * Byte 0~1 : speed_kmh_x100
+     * Byte 0   : speed_kmh_x100_L
+     * Byte 1   : speed_kmh_x100_H
      * Byte 2   : gear_state
      * Byte 3   : steering_state
-     * Byte 4   : alive_counter
-     * Byte 5   : crc8
-     * Byte 6~7 : reserved
+     * Byte 4   : steering_angle
+     * Byte 5   : reserved 0x00
+     * Byte 6   : reserved 0x00
+     * Byte 7   : reserved 0x00
      */
     speedKmhX100 = App_ConvertPulsePerSecondToKmhX100(Encoder_GetPulsePerSecond());
     gearState = App_GetCurrentGearStateForCan();
-    steeringState = App_GetCurrentSteeringStateForCan();
+    steeringAngleDeg = PotAdc_GetAngleDeg();
+    steeringState = App_GetCurrentSteeringStateForCan(steeringAngleDeg);
 
     CanComm_SendActStatus(speedKmhX100,
                           gearState,
-                          steeringState);
+                          steeringState,
+                          steeringAngleDeg);
 
+    g_debugCanSteeringState = steeringState;
+    g_debugCanSteeringAngleDeg = steeringAngleDeg;
     g_debugStatusTxCount++;
 }
 
@@ -212,13 +220,17 @@ static void App_Update1ms(void)
     Encoder_Update1ms();
 
     /*
-     * 4. 100ms마다 상태 CAN 송신
-     *    ID 0x200
+     * 4. A3 가변저항 ADC 값 갱신
+     */
+    PotAdc_Update1ms();
+
+    /*
+     * 5. 50ms마다 상태 CAN 송신
      */
     App_SendStatusIfNeeded();
 
     /*
-     * 5. Watch 확인용 값 갱신
+     * 6. Watch 확인용 값 갱신
      */
     App_UpdateDebugValues();
 }
@@ -239,6 +251,7 @@ void core0_main(void)
     MotorControl_Init();
     Steering_Init();
     Encoder_Init();
+    PotAdc_Init();
 
     /*
      * 중요:
