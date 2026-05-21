@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 
+const PC_CONTROL_BASE_URL = "http://127.0.0.1:5100";
 const GATEWAY_BASE_URL = "http://192.168.201.1:5000";
 
-const REMOTE_START_URL = `${GATEWAY_BASE_URL}/remote-control/start`;
-const REMOTE_STOP_URL = `${GATEWAY_BASE_URL}/remote-control/stop`;
-const CONTROL_URL = `${GATEWAY_BASE_URL}/control`;
-const BUZZER_CONTROL_URL = `${GATEWAY_BASE_URL}/control/buzzer`;
-const VEHICLE_STATUS_URL = `${GATEWAY_BASE_URL}/vehicle/status`;
+// 원격 조종 제어 / 상태 조회는 PC backend 사용
+const REMOTE_START_URL = `${PC_CONTROL_BASE_URL}/remote-control/start`;
+const REMOTE_STOP_URL = `${PC_CONTROL_BASE_URL}/remote-control/stop`;
+const CONTROL_URL = `${PC_CONTROL_BASE_URL}/control`;
+const VEHICLE_STATUS_URL = `${PC_CONTROL_BASE_URL}/vehicle/status`;
 
+// 부저 SOME/IP, 영상은 Gateway 그대로 사용
+const BUZZER_CONTROL_URL = `${GATEWAY_BASE_URL}/control/buzzer`;
 const LIVE_FRONT_URL = `${GATEWAY_BASE_URL}/live/front`;
 const LIVE_REAR_URL = `${GATEWAY_BASE_URL}/live/rear`;
 
