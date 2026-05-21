@@ -19,15 +19,15 @@ const initialPressedKeys = {
 };
 
 function RemoteControlPage({ onBack }) {
-  const [speed, setSpeed] = useState(0);
-  const [lastSpeedReceivedAt, setLastSpeedReceivedAt] = useState(Date.now());
+  const [speed, setSpeed] = useState(null);
+  const [lastSpeedReceivedAt, setLastSpeedReceivedAt] = useState(0);
 
   const [gear, setGear] = useState("P");
   const [brakeOn, setBrakeOn] = useState(false);
   const [leftSignalOn, setLeftSignalOn] = useState(false);
   const [rightSignalOn, setRightSignalOn] = useState(false);
   const [hazardOn, setHazardOn] = useState(false);
-  const [ignitionOn, setIgnitionOn] = useState(true);
+  const [ignitionOn, setIgnitionOn] = useState(false);
   const [buzzerOn, setBuzzerOn] = useState(false);
   const [hornOn, setHornOn] = useState(false);
 
@@ -130,7 +130,21 @@ function RemoteControlPage({ onBack }) {
   }, []);
 
   useEffect(() => {
-    const targetKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "];
+    const targetKeys = [
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  " ",
+  "p",
+  "P",
+  "r",
+  "R",
+  "n",
+  "N",
+  "d",
+  "D",
+];
 
     const handleKeyDown = (event) => {
       if (!targetKeys.includes(event.key)) return;
@@ -141,6 +155,13 @@ function RemoteControlPage({ onBack }) {
         handleBrakeOn();
         return;
       }
+
+      const gearKey = event.key.toUpperCase();
+
+if (["P", "R", "N", "D"].includes(gearKey)) {
+  handleGearClick(gearKey);
+  return;
+}
 
       if (pressedKeysRef.current[event.key]) {
         return;
