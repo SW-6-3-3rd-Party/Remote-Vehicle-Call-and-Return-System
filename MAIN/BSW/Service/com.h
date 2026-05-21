@@ -12,6 +12,13 @@
 #define MODE_DEFAULT   0
 #define MODE_REMOTE    1
 #define MODE_DIAG      2
+
+#define PC_DEFAULT           0
+#define PC_TIMEOUT_BREAK     1
+#define PC_TIMEOUT_LIGHT     3
+
+#define IGNITIONOFF     0
+#define IGNITIONON      1
 /*********************************************************************************************************************/
 /*-------------------------------------------------Global variables--------------------------------------------------*/
 /*********************************************************************************************************************/
@@ -31,13 +38,17 @@ void UDP_Ctr_ProcessRx(uint8_t* payload, uint16_t length);
 void SomeIp_ProcessRx(uint8_t* payload, uint16_t length);
 void CAN_Stat_processRx(uint8_t* payload, uint16_t length);
 void CAN_Body_processRx(uint8_t* payload, uint16_t length);
+uint8_t COM_Get_Ignition(void);
 uint8_t COM_Get_CurMode(void);
 uint8_t COM_Get_BodyAliveCnt(void);
 void COM_Set_CurMode(uint8_t cur_mode);
+void COM_Set_Safety_Override(uint8_t safety_override);
+void COM_Set_Turn_Signal(uint8_t turn_signal);
 
 void COM_Tx_CtrAct_CAN(void);
 void COM_Tx_CtrBody_CAN(void);
 void COM_Tx_Stat_UDP(void);
 void COM_Tx_MainFunction(void);
+void COM_TimeOut(void);
 
 #endif /* BSW_SERVICE_COM_H_ */

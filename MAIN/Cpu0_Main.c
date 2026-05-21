@@ -34,6 +34,7 @@
 #include "tcp_txrx.h"
 #include "asclin.h"
 #include "candrv.h"
+#include "soad.h"
 #include "com.h"
 
 IFX_ALIGN(4) IfxCpu_syncEvent cpuSyncEvent = 0;
@@ -74,8 +75,8 @@ void core0_main(void)
         Ifx_Lwip_pollReceiveFlags();   /* ETH 패킷(UDP 제어, TCP DoIP 등) 물리적 수신 */
         Can_Read();                    /* CAN 수신 */
 
-
+        COM_TimeOut();
         COM_Tx_MainFunction();
-
+        SoAd_MainFunction();
     }
 }

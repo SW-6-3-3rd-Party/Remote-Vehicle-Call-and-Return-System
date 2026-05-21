@@ -51,6 +51,7 @@
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
-void DoIP_ProcessRx(uint16_t port, uint8_t* payload, uint16_t length);
+void DoIP_ProcessRx(uint8_t* payload, uint16_t length);
+void DoIP_ProcessTx(uint16_t sourceAddr, uint8_t* udsData, uint16_t udsLength);
 
 #endif /* BSW_INTERFACE_DOIP_H_ */

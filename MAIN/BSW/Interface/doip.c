@@ -9,6 +9,8 @@
 
 #define TESTER_SOURCE_ADDRESS 0x0030
 #define MY_TARGET_ADDRESS 0x0001
+
+
 /**
  * @brief 제네릭 헤더 NACK 전송 (Payload Type: 0x0000)
  */
@@ -183,22 +185,24 @@ void DoIP_ProcessRoutingActivation(uint16_t port, uint8_t* payload, uint16_t len
 /**
  * @brief ISO 13400 규격에 따른 DoIP 수신, 헤더 검증, ACK/NACK 처리 함수
  */
-void DoIP_ProcessRx(uint16_t port, uint8_t* payload, uint16_t length)
+void DoIP_ProcessRx(uint8_t* payload, uint16_t length)
 {
     /* ===================================================================== */
     /* 1단계: 제네릭 헤더 검증 (Generic Header Check)                        */
     /* ===================================================================== */
 
+    uint16_t port = 13400;
+
     // 1-0. 최소 헤더 길이 검증
     if (length < 8) return;
 
     // 1-1. 동기화 패턴 (프로토콜 버전) 검증
-    if (payload[0] != 0x02 || payload[1] != 0xFD)
-    {
-        DoIP_SendGenericNack(port, 0x00); // Incorrect pattern format
-        SoAd_CloseSocket(port);           // [소켓 강제 종료]
-        return;
-    }
+//    if (payload[0] != 0x02 || payload[1] != 0xFD)
+//    {
+//        DoIP_SendGenericNack(port, 0x00); // Incorrect pattern format
+//        SoAd_CloseSocket(port);           // [소켓 강제 종료]
+//        return;
+//    }
 
     uint16_t payloadType = (payload[2] << 8) | payload[3];
     uint32_t expectedPayloadLength = (payload[4] << 24) | (payload[5] << 16) | (payload[6] << 8) | payload[7];

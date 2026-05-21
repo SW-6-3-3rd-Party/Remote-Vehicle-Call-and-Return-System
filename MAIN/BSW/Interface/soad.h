@@ -9,5 +9,6 @@
 /* LwIP의 수신 콜백 함수가 호출할 Rx Indication 함수 */
 void SoAd_RxIndication(uint16_t port, uint8_t* payload, uint16_t length);
 void SoAd_CloseSocket(uint16_t port);
+void SoAd_MainFunction(void);
 void SoAd_IfTransmit(uint16_t port, uint8_t* payload, uint16_t length);
 #endif /* SOAD_H */

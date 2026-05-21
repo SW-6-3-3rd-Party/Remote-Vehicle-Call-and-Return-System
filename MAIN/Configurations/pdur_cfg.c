@@ -3,6 +3,7 @@
 #include "canif.h"
 #include "cantp.h"
 #include "soad.h"
+#include "doip.h"
 
 #include <stdint.h>
 

@@ -17,7 +17,7 @@ static void PduR_RouteRx_CanEvent(uint8_t* payload, uint8_t length) {
 }
 
 static void PduR_RouteRx_CanBody(uint8_t* payload, uint8_t length) {
-    PduR_RouteRx(PDUR_CAN_EVENT_ID, payload, length);
+    PduR_RouteRx(PDUR_CAN_BODY_ID, payload, length);
 }
 
 static void CanTp_Act_RxIndication(uint8_t* payload, uint8_t length) {

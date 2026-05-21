@@ -5,6 +5,7 @@
 #include "lwip/tcp.h"
 #include <string.h>
 #include "soad.h" /* SoAd 계층 연동을 위한 헤더 포함 */
+#include "swc.h"
 
 #define TCP_SERVER_PORT 13400
 
@@ -63,6 +64,8 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
     /* 상대방이 연결을 끊음 (FIN) */
     if (p == NULL) {
         tcp_server_close(tpcb);
+        if(tpcb->local_port == 13400)
+            Callback_Diag_RoutingDeactivated();
         return ERR_OK;
     }
 

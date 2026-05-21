@@ -9,8 +9,9 @@
 #include "com.h"
 #include "pdur.h"
 #include "pdur_cfg.h"
+#include "swc.h"
+#include "gettime.h"
 #include "Platform_Types.h"
-#include "Ifx_Lwip.h"
 
 /*********************************************************************************************************************/
 /*------------------------------------------------------Macros-------------------------------------------------------*/
@@ -73,11 +74,18 @@ static boolean COM_Collision_Warn;
 
 static uint8_t COM_Cur_Mode;
 static boolean COM_Safety_Override;
-
+static uint8_t COM_Stat_Cnt;
 
 static uint8_t COM_TxBuf_CtrAct_CAN[6];
 static uint8_t COM_TxBuf_CtrBody_CAN[6];
-static uint8_t COM_TxBuf_Stat_UDP[2];
+static uint8_t COM_TxBuf_Stat_UDP[3];
+
+
+#define UDP_TIMEOUT_THRESHOLD_MS 500  /* 500ms 통신 두절 시 타임아웃 */
+
+static uint32_t Last_Udp_RxTime = 0;
+static boolean  Is_Udp_Timeout = FALSE;
+static boolean  Is_First_Msg_Received = FALSE; /* 부팅 후 첫 메시지 수신 여부 */
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
@@ -98,6 +106,10 @@ void UDP_Ctr_ProcessRx(uint8_t* payload, uint16_t length)
     COM_RxBuf_UDP_Ctr.head_light =  payload[8];
 
     if(COM_Cur_Mode == MODE_DEFAULT) COM_Cur_Mode = MODE_REMOTE;
+    /* 핵심: 정상 수신되었으므로 시간 갱신 및 타임아웃 플래그 해제 */
+    Last_Udp_RxTime = Get_SystemTime_ms();
+    Is_Udp_Timeout = FALSE;
+    Is_First_Msg_Received = TRUE;
 }
 
 void SomeIp_ProcessRx(uint8_t* payload, uint16_t length)
@@ -119,9 +131,12 @@ void CAN_Body_processRx(uint8_t* payload, uint16_t length)
     COM_RxBuf_CAN_Body.alive_cnt = payload[0];
 }
 
+uint8_t COM_Get_Ignition(void) { return COM_RxBuf_UDP_Ctr.ignition; }
 uint8_t COM_Get_CurMode(void) { return COM_Cur_Mode; }
 uint8_t COM_Get_BodyAliveCnt(void) { return COM_RxBuf_CAN_Body.alive_cnt; }
 void COM_Set_CurMode(uint8_t cur_mode) { COM_Cur_Mode = cur_mode; }
+void COM_Set_Safety_Override(uint8_t safety_override) { COM_Safety_Override = safety_override; }
+void COM_Set_Turn_Signal(uint8_t turn_signal) { COM_RxBuf_UDP_Ctr.turn_signal = turn_signal; }
 
 void COM_Tx_CtrAct_CAN(void)
 {
@@ -132,7 +147,7 @@ void COM_Tx_CtrAct_CAN(void)
     COM_TxBuf_CtrAct_CAN[4] = COM_Cur_Mode;
     COM_TxBuf_CtrAct_CAN[5] = COM_Safety_Override;
     //pdu로 보내기
-    PduR_RouteTx(PDUR_TX_CAN_ACT_ID, COM_TxBuf_CtrAct_CAN, 6);
+    PduR_RouteTx(PDUR_TX_CAN_ACT_ID, COM_TxBuf_CtrAct_CAN, sizeof(COM_TxBuf_CtrAct_CAN));
 }
 
 void COM_Tx_CtrBody_CAN(void)
@@ -144,20 +159,17 @@ void COM_Tx_CtrBody_CAN(void)
     COM_TxBuf_CtrBody_CAN[4] = COM_Collision_Warn;
     COM_TxBuf_CtrBody_CAN[5] = COM_Cur_Mode;
     //pdu로 보내기
-    PduR_RouteTx(PDUR_TX_CAN_BODY_ID, COM_TxBuf_CtrBody_CAN, 6);
+    PduR_RouteTx(PDUR_TX_CAN_BODY_ID, COM_TxBuf_CtrBody_CAN, sizeof(COM_TxBuf_CtrBody_CAN));
 }
 
 void COM_Tx_Stat_UDP(void)
 {
-    COM_TxBuf_Stat_UDP[0] = COM_RxBuf_CAN_Stat.speedl;
-    COM_TxBuf_Stat_UDP[1] = COM_RxBuf_CAN_Stat.speedh;
+    COM_TxBuf_Stat_UDP[0] = COM_Stat_Cnt;
+    COM_TxBuf_Stat_UDP[1] = COM_RxBuf_CAN_Stat.speedl;
+    COM_TxBuf_Stat_UDP[2] = COM_RxBuf_CAN_Stat.speedh;
     //pdu로 전송
-    PduR_RouteTx(PDUR_TX_UDP_STAT_ID, COM_TxBuf_Stat_UDP, 2);
-}
-
-inline uint32_t Get_SystemTime_ms(void)
-{
-    return g_TickCount_1ms;
+    Callback_COM_SessionCnt(&COM_Stat_Cnt);
+    PduR_RouteTx(PDUR_TX_UDP_STAT_ID, COM_TxBuf_Stat_UDP, sizeof(COM_TxBuf_Stat_UDP));
 }
 
 //시간 보고 전체 전송하는 함수 하나
@@ -184,5 +196,26 @@ void COM_Tx_MainFunction(void)
         COM_Tx_Stat_UDP();
 
         lastTime_50ms = currentTime;
+    }
+}
+
+void COM_TimeOut(void)
+{
+    /* 아직 부팅하고 PC에서 한 번도 제어 신호가 안 왔다면 감시하지 않음 */
+    if (Is_First_Msg_Received == FALSE) return;
+
+    uint32_t currentTime = Get_SystemTime_ms();
+
+    /* 마지막 수신 시간과 현재 시간의 차이가 500ms 이상 벌어졌는지 확인 */
+    if ((currentTime - Last_Udp_RxTime) >= UDP_TIMEOUT_THRESHOLD_MS)
+    {
+        /* 이미 타임아웃 처리 중이 아니라면 (중복 호출 방지) */
+        if (Is_Udp_Timeout == FALSE)
+        {
+            Is_Udp_Timeout = TRUE; /* 타임아웃 상태로 진입 */
+
+            /* SWC로 "통신 끊겼다!" 라고 보고 (콜백 호출) */
+            Callback_COM_UdpTimeout();
+        }
     }
 }

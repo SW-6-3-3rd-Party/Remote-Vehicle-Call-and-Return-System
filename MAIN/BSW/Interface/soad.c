@@ -5,8 +5,13 @@
 #include "doip.h"
 #include "pdur.h"
 #include "tcp_txrx.h"
-#include "Ifx_Lwip.h"
+#include "udp_txrx.h"
+#include "gettime.h"
 #include <stddef.h>
+
+/* 소켓 종료를 예약하기 위한 상태 변수들 */
+static boolean  SoAd_IsClosePending = FALSE;
+static uint32_t SoAd_CloseRequestTime = 0;
 
 void SoAd_RxIndication(uint16_t port, uint8_t* payload, uint16_t length)
 {
@@ -28,7 +33,26 @@ void SoAd_CloseSocket(uint16_t port)
 {
     if (port == 13400)
     {
-        doip_server_close();
+        SoAd_IsClosePending = TRUE;
+        SoAd_CloseRequestTime = Get_SystemTime_ms();
+    }
+}
+
+/**
+ * @brief 메인 루프에서 주기적으로 호출되며 예약된 종료를 실행하는 함수
+ */
+void SoAd_MainFunction(void)
+{
+    if (SoAd_IsClosePending == TRUE)
+    {
+        /* NACK 송신 지시 후 50ms가 경과했는지 논블로킹으로 확인 */
+        if ((Get_SystemTime_ms() - SoAd_CloseRequestTime) >= 50)
+        {
+            /* 50ms가 지났으므로 LwIP 송신 큐가 다 비워졌다고 판단하고 진짜로 닫음 */
+            doip_server_close();
+
+            SoAd_IsClosePending = FALSE; /* 플래그 초기화 */
+        }
     }
 }
 
@@ -39,7 +63,7 @@ void SoAd_IfTransmit(uint16_t port, uint8_t* payload, uint16_t length)
     else if (port == 5001)
     {
         ip_addr_t ip;
-        IP4_ADDR(&ip, 192,168,1,100);
+        IP4_ADDR(&ip, 192,168,1,121);
         UdpSend(&ip, port, payload, length);
     }
     else if (port == 5002)
