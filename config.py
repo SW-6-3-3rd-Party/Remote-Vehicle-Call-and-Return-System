@@ -31,7 +31,7 @@ PAYLOAD_ENCODING = "utf-8"
 # HTTP / Proxy Config
 # =========================
 
-MEDIA_HTTP_PORT = 8088
+MEDIA_HTTP_PORT = 8080
 GATEWAY_PROXY_PORT = 5000
 
 # =========================
@@ -47,3 +47,10 @@ BUZZER_SOMEIP_CLIENT_PORT = 30492
 BUZZER_SERVICE_ID = 0x2001
 BUZZER_INSTANCE_ID = 0x0001
 SET_BUZZER_STATE_METHOD_ID = 0x0001
+
+# =========================
+# MAIN / UDP Control Config
+# =========================
+
+MAIN_CONTROL_PORT=5000
+MAIN_SPEED_PORT=5001
