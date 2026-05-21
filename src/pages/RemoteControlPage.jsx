@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const PC_CONTROL_BASE_URL = "http://127.0.0.1:5100";
-const GATEWAY_BASE_URL = "http://192.168.201.1:5000";
+const GATEWAY_BASE_URL = "http://192.168.1.1:5000";
 
 // 원격 조종 제어 / 상태 조회는 PC backend 사용
 const REMOTE_START_URL = `${PC_CONTROL_BASE_URL}/remote-control/start`;
