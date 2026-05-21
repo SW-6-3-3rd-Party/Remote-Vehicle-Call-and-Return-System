@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import "./DiagnosticPage.css";
 
-const API_BASE_URL =
-  import.meta.env.VITE_GATEWAY_BASE_URL || "http://192.168.201.1:5000";
+const getDefaultApiBaseUrl = () => {
+  const hostname = window.location.hostname || "127.0.0.1";
+  return `${window.location.protocol}//${hostname}:5000`;
+};
+
+const API_BASE_URL = import.meta.env.VITE_GATEWAY_BASE_URL || getDefaultApiBaseUrl();
 
 const FUNCTION_TESTS = [
   {
@@ -228,6 +232,10 @@ function buildEcus(scanData) {
   ];
 }
 
+function mergeEcuById(current, next) {
+  return current.map((ecu) => (ecu.id === next.id ? next : ecu));
+}
+
 function buildDtcRows(ecus) {
   return ecus.flatMap((ecu) =>
     (ecu.dtcs || []).map((dtc) => ({
@@ -301,7 +309,25 @@ function DiagnosticPage({ onBack }) {
   const runDiagnostics = useCallback(async () => {
     try {
       setLoading(true);
-      pushLog("DoIP 진단을 시작합니다. RA → SessionControl → DID/DTC 순서로 조회합니다.");
+      pushLog(`DoIP 진단을 시작합니다. API=${API_BASE_URL}`);
+      pushLog("Media Pi 직접 DoIP 조회를 먼저 수행합니다.");
+
+      const mediaResponse = await fetch(`${API_BASE_URL}/diagnostics/media`);
+      const mediaData = await mediaResponse.json();
+
+      if (!mediaResponse.ok || mediaData.result === "ERROR") {
+        throw new Error(mediaData.detail || `Media HTTP ${mediaResponse.status}`);
+      }
+
+      const mediaCard = buildMediaCard(mediaData);
+      setEcus((current) => mergeEcuById(current, mediaCard));
+      setDtcs((current) => [
+        ...current.filter((dtc) => dtc.ecu !== "MEDIA PI"),
+        ...buildDtcRows([mediaCard]),
+      ]);
+      setLastUpdatedAt(new Date());
+      pushLog("Media Pi DID 조회가 완료되었습니다.");
+      pushLog("MAIN/ACT/BODY 포함 전체 진단을 이어서 수행합니다.");
 
       const response = await fetch(`${API_BASE_URL}/diagnostics/run`);
       const data = await response.json();

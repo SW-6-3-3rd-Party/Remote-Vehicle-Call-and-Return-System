@@ -3,11 +3,13 @@ import signal
 import subprocess
 import sys
 import time
+import shutil
 from importlib.util import find_spec
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+NPM = shutil.which("npm") or shutil.which("npm.cmd") or "npm"
 
 PROCESSES = [
     (
@@ -26,7 +28,7 @@ PROCESSES = [
     ),
     (
         "react-dev",
-        ["npm.cmd", "run", "dev", "--", "--host", "0.0.0.0"],
+        [NPM, "run", "dev", "--", "--host", "0.0.0.0"],
         {
             "VITE_GATEWAY_BASE_URL": "http://127.0.0.1:5000",
         },
