@@ -26,7 +26,7 @@ PROCESSES = [
     ),
     (
         "react-dev",
-        ["npm", "run", "dev", "--", "--host", "0.0.0.0"],
+        ["npm.cmd", "run", "dev", "--", "--host", "0.0.0.0"],
         {
             "VITE_GATEWAY_BASE_URL": "http://127.0.0.1:5000",
         },
