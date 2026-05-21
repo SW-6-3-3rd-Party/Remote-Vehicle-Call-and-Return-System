@@ -331,7 +331,7 @@ def control_command():
                 "error_code": 1,
                 "message": f"unknown control type: {command_type}",
             }), 400
-s
+
     return jsonify({
         "result": "OK",
         "command": command_data,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import "./DiagnosticPage.css";
 
 const API_BASE_URL =
-  import.meta.env.VITE_GATEWAY_BASE_URL || "http://192.168.201.2:5000";
+  import.meta.env.VITE_GATEWAY_BASE_URL || "http://192.168.201.1:5000";
 
 const FUNCTION_TESTS = [
   {
