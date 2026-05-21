@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API_URL = "http://192.168.201.2:5000/accidents?vehicle_id=1";
+const API_URL = "http://192.168.201.1:5000/accidents?vehicle_id=1";
 
 function getDrivingStateText(state) {
   if (state === 1) return "주행 중";

@@ -109,3 +109,58 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+.side-buzzer-card .buzzer-button {
+  transform: translate(7px, 0px);
+}
+
+/* =========================
+   Global Layout Override
+   - 팀원 화면 레이아웃용 전역 설정
+   - 기존 index.css 맨 아래에 추가
+   ========================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+}
+
+img,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+/* 기존 Vite 기본 #root 폭 제한 해제 */
+#root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+  border-inline: none;
+  min-height: 100vh;
+}
+
+/* 부저 버튼 위치 보정 */
+.side-buzzer-card .buzzer-button {
+  transform: translate(7px, 0px);
+}

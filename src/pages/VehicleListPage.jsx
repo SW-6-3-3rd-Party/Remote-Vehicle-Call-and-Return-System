@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 
-const STATUS_API_URL = "http://192.168.201.2:5000/vehicle/status";
+const STATUS_API_URL = "http://192.168.201.1:5000/vehicle/status";
 
-function VehicleListPage({ onOpenAccidents, onOpenRemoteControl }) {
+function VehicleListPage({
+  onOpenAccidents,
+  onOpenRemoteControl,
+  onOpenDiagnostic,
+}) {
   const [vehicleStatus, setVehicleStatus] = useState({
     driving_state: 0,
     driving_state_text: "정지 중",
@@ -70,7 +74,9 @@ function VehicleListPage({ onOpenAccidents, onOpenRemoteControl }) {
           </div>
 
           <div className="vehicle-actions">
-            <button className="secondary-button">진단</button>
+            <button className="secondary-button" onClick={onOpenDiagnostic}>
+              진단
+            </button>
 
             <button className="primary-outline-button" onClick={onOpenAccidents}>
               사고 이력

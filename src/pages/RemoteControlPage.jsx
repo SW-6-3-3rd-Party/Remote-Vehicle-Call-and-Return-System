@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-const GATEWAY_BASE_URL = "http://192.168.201.2:5000";
+const GATEWAY_BASE_URL = "http://192.168.201.1:5000";
 
 const REMOTE_START_URL = `${GATEWAY_BASE_URL}/remote-control/start`;
 const REMOTE_STOP_URL = `${GATEWAY_BASE_URL}/remote-control/stop`;
 const CONTROL_URL = `${GATEWAY_BASE_URL}/control`;
+const BUZZER_CONTROL_URL = `${GATEWAY_BASE_URL}/control/buzzer`;
 const VEHICLE_STATUS_URL = `${GATEWAY_BASE_URL}/vehicle/status`;
 
 const LIVE_FRONT_URL = `${GATEWAY_BASE_URL}/live/front`;
@@ -34,6 +35,7 @@ function RemoteControlPage({ onBack }) {
 
   const pressedKeysRef = useRef(initialPressedKeys);
   const lastDriveCommandRef = useRef("STOP");
+  const brakeOnRef = useRef(false);
 
   const communicationConnected =
     speed !== null && Date.now() - lastSpeedReceivedAt < 3000;
@@ -78,6 +80,22 @@ function RemoteControlPage({ onBack }) {
     sendControlCommand("drive", nextCommand);
   };
 
+  const handleBrakeOn = () => {
+    if (brakeOnRef.current) return;
+
+    brakeOnRef.current = true;
+    setBrakeOn(true);
+    sendControlCommand("brake", "ON");
+  };
+
+  const handleBrakeOff = () => {
+    if (!brakeOnRef.current) return;
+
+    brakeOnRef.current = false;
+    setBrakeOn(false);
+    sendControlCommand("brake", "OFF");
+  };
+
   useEffect(() => {
     fetch(REMOTE_START_URL, { method: "POST" }).catch((error) => {
       console.error("원격 제어 ON 실패:", error);
@@ -112,12 +130,17 @@ function RemoteControlPage({ onBack }) {
   }, []);
 
   useEffect(() => {
-    const targetKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    const targetKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "];
 
     const handleKeyDown = (event) => {
       if (!targetKeys.includes(event.key)) return;
 
       event.preventDefault();
+
+      if (event.key === " ") {
+        handleBrakeOn();
+        return;
+      }
 
       if (pressedKeysRef.current[event.key]) {
         return;
@@ -137,6 +160,11 @@ function RemoteControlPage({ onBack }) {
       if (!targetKeys.includes(event.key)) return;
 
       event.preventDefault();
+
+      if (event.key === " ") {
+        handleBrakeOff();
+        return;
+      }
 
       const nextPressedKeys = {
         ...pressedKeysRef.current,
@@ -158,20 +186,25 @@ function RemoteControlPage({ onBack }) {
       pressedKeysRef.current = initialPressedKeys;
       setPressedKeys(initialPressedKeys);
       lastDriveCommandRef.current = "STOP";
+
+      brakeOnRef.current = false;
+      setBrakeOn(false);
+
       sendControlCommand("drive", "STOP");
+      sendControlCommand("brake", "OFF");
     };
   }, []);
 
-  const handleBack = async () => {
-    try {
-      await sendControlCommand("drive", "STOP");
-      await fetch(REMOTE_STOP_URL, { method: "POST" });
-    } catch (error) {
-      console.error("원격 제어 OFF 실패:", error);
-    }
+const handleBack = () => {
+  onBack();
 
-    onBack();
-  };
+  sendControlCommand("drive", "STOP");
+  sendControlCommand("brake", "OFF");
+
+  fetch(REMOTE_STOP_URL, { method: "POST" }).catch((error) => {
+    console.error("원격 제어 OFF 실패:", error);
+  });
+};
 
   const getKeyboardCommandText = () => {
     if (pressedKeys.ArrowUp && pressedKeys.ArrowLeft) return "전진 + 좌회전";
@@ -187,14 +220,30 @@ function RemoteControlPage({ onBack }) {
 
   const handleLeftSignalClick = () => {
     const next = !leftSignalOn;
+
     setLeftSignalOn(next);
-    sendControlCommand("indicator_left", next ? "ON" : "OFF");
+
+    if (next) {
+      setRightSignalOn(false);
+      sendControlCommand("indicator_left", "ON");
+      sendControlCommand("indicator_right", "OFF");
+    } else {
+      sendControlCommand("indicator_left", "OFF");
+    }
   };
 
   const handleRightSignalClick = () => {
     const next = !rightSignalOn;
+
     setRightSignalOn(next);
-    sendControlCommand("indicator_right", next ? "ON" : "OFF");
+
+    if (next) {
+      setLeftSignalOn(false);
+      sendControlCommand("indicator_right", "ON");
+      sendControlCommand("indicator_left", "OFF");
+    } else {
+      sendControlCommand("indicator_right", "OFF");
+    }
   };
 
   const handleHazardClick = () => {
@@ -213,22 +262,40 @@ function RemoteControlPage({ onBack }) {
     sendControlCommand("horn", "OFF");
   };
 
-  const handleBuzzerClick = () => {
-    const next = !buzzerOn;
-    setBuzzerOn(next);
-    sendControlCommand("buzzer", next ? "ON" : "OFF");
-  };
+const handleBuzzerClick = async () => {
+  const next = !buzzerOn;
+  const nextBuzzerState = next ? 1 : 0;
+
+  try {
+    const response = await fetch(BUZZER_CONTROL_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        vehicle_id: 1,
+        buzzer_state: nextBuzzerState,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.result !== "OK") {
+      alert(data.message || data.detail || "제어 명령 오류");
+      return;
+    }
+
+    setBuzzerOn(data.buzzer_state === 1);
+  } catch (error) {
+    console.error("부저 제어 실패:", error);
+    alert("Gateway 서버에 연결할 수 없습니다.");
+  }
+};
 
   const handleIgnitionClick = () => {
     const next = !ignitionOn;
     setIgnitionOn(next);
     sendControlCommand("ignition", next ? "ON" : "OFF");
-  };
-
-  const handleBrakeClick = () => {
-    const next = !brakeOn;
-    setBrakeOn(next);
-    sendControlCommand("brake", next ? "ON" : "OFF");
   };
 
   const handleGearClick = (nextGear) => {
@@ -343,7 +410,7 @@ function RemoteControlPage({ onBack }) {
           </section>
 
           <section className="buzzer-card side-buzzer-card">
-            <h3>부저 제어</h3>
+            <h3>후진 경고음</h3>
 
             <button
               className={`buzzer-button ${buzzerOn ? "active" : ""}`}
@@ -351,10 +418,6 @@ function RemoteControlPage({ onBack }) {
             >
               🔊
             </button>
-
-            <p className="buzzer-state">
-              부저 상태: <strong>{buzzerOn ? "ON" : "OFF"}</strong>
-            </p>
           </section>
         </aside>
 
@@ -450,7 +513,7 @@ function RemoteControlPage({ onBack }) {
 
             <button
               className={`brake-button ${brakeOn ? "active" : ""}`}
-              onClick={handleBrakeClick}
+              type="button"
             >
               !
             </button>
@@ -462,7 +525,7 @@ function RemoteControlPage({ onBack }) {
 
       <footer className="remote-footer">
         <span>조종 입력: 키보드 방향키</span>
-        <span>통신 상태: 속도값 수신 기준</span>
+        <span>브레이크: Space 누르는 동안 ON</span>
         <span>현재 시간: {new Date().toLocaleTimeString()}</span>
       </footer>
     </div>

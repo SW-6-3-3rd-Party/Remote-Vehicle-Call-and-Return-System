@@ -4332,3 +4332,50 @@ body,
 .camera-sub-panel .camera-placeholder {
   display: none !important;
 }
+
+.vehicle-header {
+  width: 100%;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+.vehicle-header > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vehicle-header .system-label {
+  text-align: center;
+}
+
+.vehicle-header h1 {
+  text-align: center;
+}
+
+/* Vehicle Summary Center Align Fix */
+
+.vehicle-summary > div {
+  min-height: 118px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  text-align: center !important;
+}
+
+.vehicle-summary span {
+  display: block !important;
+  margin-bottom: 10px !important;
+  text-align: center !important;
+}
+
+.vehicle-summary strong {
+  display: block !important;
+  text-align: center !important;
+  font-size: 24px !important;
+}
