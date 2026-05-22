@@ -1,5 +1,7 @@
 import json
 import logging
+import socket
+import struct
 import subprocess
 import threading
 import time
@@ -7,7 +9,6 @@ from datetime import datetime
 from pathlib import Path
 
 import cv2
-import RPi.GPIO as GPIO
 
 from . import config
 from .event_db import EventDB
@@ -109,53 +110,63 @@ def _transcode(avi: Path, mp4: Path,
 _POST_EVENT_COOLDOWN_SECS = 30  # 이벤트 종료 후 이 시간 동안 재트리거 무시
 
 class EventTrigger:
-    def __init__(self, csi_rec, usb_rec, mic_rec, db: EventDB):
-        self._csi = csi_rec
+    def __init__(self, usb1_rec, usb_rec, mic_rec, db: EventDB):
+        self._usb1 = usb1_rec
         self._usb = usb_rec
         self._mic = mic_rec
         self._db = db
         self._in_event = False
         self._last_event_end: float = 0.0
         self._lock = threading.Lock()
+        self._stop_event = threading.Event()
 
     # ------------------------------------------------------------------
-    # GPIO setup / teardown
+    # UDP trigger setup / teardown
     # ------------------------------------------------------------------
 
     def setup(self) -> None:
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(config.GPIO_SWITCH_PIN, GPIO.IN,
-                   pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(
-            config.GPIO_SWITCH_PIN,
-            GPIO.FALLING,
-            callback=self._gpio_callback,
-            bouncetime=config.GPIO_BOUNCE_MS,
-        )
-        log.info("GPIO %d armed (BCM, falling edge, pull-up)",
-                 config.GPIO_SWITCH_PIN)
+        self._stop_event.clear()
+        threading.Thread(target=self._udp_listener, name="udp-trigger",
+                         daemon=True).start()
+        log.info("UDP trigger listener started on %s:%d",
+                 config.ECU_TRIGGER_LISTEN_IP, config.ECU_TRIGGER_LISTEN_PORT)
 
     def cleanup(self) -> None:
-        GPIO.cleanup()
-        log.info("GPIO cleaned up")
+        self._stop_event.set()
+        log.info("UDP trigger listener stopped")
 
     # ------------------------------------------------------------------
-    # GPIO ISR  (runs in RPi.GPIO's internal thread)
+    # UDP listener  (runs in dedicated thread)
     # ------------------------------------------------------------------
 
-    def _gpio_callback(self, channel: int) -> None:
-        import RPi.GPIO as _GPIO
-        # 노이즈 필터: 50ms 뒤에도 여전히 LOW인지 확인 (sustained LOW)
-        time.sleep(0.05)
-        if _GPIO.input(channel) != _GPIO.LOW:
-            log.info("GPIO false trigger (pin not sustained LOW) — ignored")
-            return
-        # 추가 확인: 또 50ms 뒤
-        time.sleep(0.05)
-        if _GPIO.input(channel) != _GPIO.LOW:
-            log.info("GPIO false trigger (pin not sustained LOW x2) — ignored")
-            return
+    def _udp_listener(self) -> None:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(1.0)
+        sock.bind((config.ECU_TRIGGER_LISTEN_IP, config.ECU_TRIGGER_LISTEN_PORT))
+        log.info("UDP trigger socket bound to %s:%d",
+                 config.ECU_TRIGGER_LISTEN_IP, config.ECU_TRIGGER_LISTEN_PORT)
+        while not self._stop_event.is_set():
+            try:
+                data, addr = sock.recvfrom(16)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            if len(data) < 5:
+                log.warning("Too short packet from %s (%d bytes) — ignored", addr, len(data))
+                continue
+            event_type   = data[0]
+            timestamp_ms = struct.unpack(">I", data[1:5])[0]
+            log.info("ECU trigger from %s: event_type=0x%02X ts=%d ms",
+                     addr, event_type, timestamp_ms)
+            if event_type != 0x01:
+                log.debug("Unknown event_type 0x%02X — ignored", event_type)
+                continue
+            self._on_trigger()
+        sock.close()
 
+    def _on_trigger(self) -> None:
         with self._lock:
             now = time.time()
             if self._in_event:
@@ -166,7 +177,6 @@ class EventTrigger:
                 log.debug("Post-event cooldown active (%.1fs left) — ignoring trigger", remaining)
                 return
             self._in_event = True
-
         threading.Thread(target=self._handle_event, name="event-handler",
                          daemon=True).start()
 
@@ -184,22 +194,25 @@ class EventTrigger:
 
         try:
             # --- start clips (pre-event from ring buffer written immediately) ---
-            if self._csi is not None:
-                self._csi.start_event_clip(event_dir)
+            if self._usb1 is not None:
+                self._usb1.start_event_clip(event_dir)
             usb_video_start: float | None = None
             if self._usb is not None:
                 usb_video_start = self._usb.start_event_clip(event_dir)
-            mic_audio_start: float = self._mic.start_event_clip(event_dir)
+            mic_audio_start: float | None = None
+            if self._mic is not None:
+                mic_audio_start = self._mic.start_event_clip(event_dir)
 
             # --- wait for post-event recording ---
             time.sleep(config.POST_EVENT_SECS)
 
             # --- stop clips (files closed and flushed) ---
-            if self._csi is not None:
-                self._csi.stop_event_clip()
+            if self._usb1 is not None:
+                self._usb1.stop_event_clip()
             if self._usb is not None:
                 self._usb.stop_event_clip()
-            self._mic.stop_event_clip()
+            if self._mic is not None:
+                self._mic.stop_event_clip()
 
             # --- persist metadata ---
             meta = {
@@ -208,7 +221,7 @@ class EventTrigger:
                 "pre_secs": config.PRE_EVENT_SECS,
                 "post_secs": config.POST_EVENT_SECS,
                 "files": {
-                    "csi": str(event_dir / "csi_clip.avi"),
+                    "front": str(event_dir / "front_clip.avi"),
                     "usb": str(event_dir / "usb_clip.avi"),
                     "mic": str(event_dir / "mic_clip.wav"),
                 },
@@ -225,7 +238,7 @@ class EventTrigger:
 
             # 비디오-오디오 싱크 오프셋 계산
             sync_offset = 0.0
-            if usb_video_start is not None:
+            if usb_video_start is not None and mic_audio_start is not None:
                 sync_offset = usb_video_start - mic_audio_start
                 log.info("비디오-오디오 싱크 오프셋: %.3fs "
                          "(video_start=%.3f, audio_start=%.3f)",
@@ -233,10 +246,11 @@ class EventTrigger:
 
             # AVI → MP4 트랜스코딩 (백그라운드, seeking 지원)
             mic_wav = event_dir / "mic_clip.wav"
-            for stem in ("csi_clip", "usb_clip"):
+            has_audio = self._mic is not None and mic_wav.exists()
+            for stem in ("front_clip", "usb_clip"):
                 avi = event_dir / f"{stem}.avi"
                 mp4 = event_dir / f"{stem}.mp4"
-                audio = mic_wav if stem == "usb_clip" else None
+                audio = mic_wav if (stem == "usb_clip" and has_audio) else None
                 offset = sync_offset if stem == "usb_clip" else 0.0
                 threading.Thread(
                     target=_transcode, args=(avi, mp4, audio, offset), daemon=True

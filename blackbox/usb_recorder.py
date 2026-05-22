@@ -1,7 +1,7 @@
 """
 USB camera recorder (cv2 / V4L2)
 
-Same architecture as CSIRecorder:
+Same architecture as FrontUSBRecorder:
   ring buffer + continuous writer + event writer + live stream via iter_frames()
 """
 import logging
@@ -22,12 +22,13 @@ _FrameItem = tuple[float, object]
 
 class USBRecorder:
     def __init__(self):
-        maxlen = config.USB_FPS * config.PRE_EVENT_SECS
+        maxlen = config.USB2_FPS * config.PRE_EVENT_SECS
         self.ring: RingBuffer[_FrameItem] = RingBuffer(maxlen)
 
         self._stop_evt = threading.Event()
         self._thread: threading.Thread | None = None
         self._cap: cv2.VideoCapture | None = None
+        self._device_idx: int | None = None  # set in start(), reused in reconnect
 
         # live stream
         self._latest_jpeg: bytes = b""
@@ -46,17 +47,18 @@ class USBRecorder:
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        device_idx = config.USB_DEVICE if config.USB_DEVICE is not None \
+        device_idx = config.USB2_DEVICE if config.USB2_DEVICE is not None \
                      else self._find_usb_device()
+        self._device_idx = device_idx
         self._cap = cv2.VideoCapture(device_idx, cv2.CAP_V4L2)
-        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.USB_WIDTH)
-        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.USB_HEIGHT)
-        self._cap.set(cv2.CAP_PROP_FPS, config.USB_FPS)
+        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.USB2_WIDTH)
+        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.USB2_HEIGHT)
+        self._cap.set(cv2.CAP_PROP_FPS,          config.USB2_FPS)
         if not self._cap.isOpened():
-            raise RuntimeError(f"Cannot open USB camera at /dev/video{device_idx}")
-        self._thread = threading.Thread(target=self._loop, name="usb-loop", daemon=True)
+            raise RuntimeError(f"Cannot open rear USB camera at /dev/video{device_idx}")
+        self._thread = threading.Thread(target=self._loop, name="usb2-loop", daemon=True)
         self._thread.start()
-        log.info("USB recorder started (device=/dev/video%d)", device_idx)
+        log.info("Rear USB recorder started (device=/dev/video%d)", device_idx)
 
     def stop(self) -> None:
         self._stop_evt.set()
@@ -102,17 +104,17 @@ class USBRecorder:
             self._cap.release()
             self._cap = None
 
+        device_idx = self._device_idx  # always reconnect to the same physical device
+
         for attempt in range(1, 6):
             time.sleep(2.0)
             if self._stop_evt.is_set():
                 return False
             try:
-                device_idx = config.USB_DEVICE if config.USB_DEVICE is not None \
-                             else self._find_usb_device()
                 cap = cv2.VideoCapture(device_idx, cv2.CAP_V4L2)
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.USB_WIDTH)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.USB_HEIGHT)
-                cap.set(cv2.CAP_PROP_FPS, config.USB_FPS)
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.USB2_WIDTH)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.USB2_HEIGHT)
+                cap.set(cv2.CAP_PROP_FPS,          config.USB2_FPS)
                 ret, _ = cap.read()
                 if cap.isOpened() and ret:
                     self._cap = cap
@@ -190,8 +192,8 @@ class USBRecorder:
         used to calculate audio-video sync offset.
         """
         path = event_dir / "usb_clip.avi"
-        writer = self._make_writer(path, config.USB_FPS,
-                                   config.USB_WIDTH, config.USB_HEIGHT)
+        writer = self._make_writer(path, config.USB2_FPS,
+                                   config.USB2_WIDTH, config.USB2_HEIGHT)
         if not writer.isOpened():
             log.error("USB VideoWriter 열기 실패: %s", path)
             return None
@@ -226,10 +228,16 @@ class USBRecorder:
 
     @staticmethod
     def _find_usb_device() -> int:
-        for idx in range(10):
+        """USB2 포트(Linux Bus 1, /usb1/)에 연결된 UVC 카메라 장치 번호 반환 — 후방 카메라."""
+        for idx in range(32):
             if not os.path.exists(f"/dev/video{idx}"):
                 continue
-            # uvcvideo 드라이버(USB 카메라)만 허용 — unicam(CSI) 등 내부 장치 제외
+            try:
+                dev_path = os.path.realpath(f"/sys/class/video4linux/video{idx}/device")
+            except OSError:
+                continue
+            if "/usb1/" not in dev_path:
+                continue
             try:
                 driver_link = os.readlink(
                     f"/sys/class/video4linux/video{idx}/device/driver"
@@ -242,21 +250,41 @@ class USBRecorder:
             if not cap.isOpened():
                 cap.release()
                 continue
-            ret, _ = cap.read()
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS,          30)
+            ret = False
+            for _ in range(5):
+                ret, _ = cap.read()
+                if ret:
+                    break
+                time.sleep(0.3)
             cap.release()
             if ret:
-                log.info("USB camera auto-detected at /dev/video%d", idx)
+                log.info("Rear camera auto-detected at /dev/video%d (USB2 port)", idx)
                 return idx
-        raise RuntimeError("No accessible USB camera found on /dev/video0-9")
+        raise RuntimeError("USB2 포트에서 후방 카메라를 찾을 수 없습니다 — 후방 카메라를 USB2(검은색) 포트에 연결하세요")
 
     def _open_cont_writer(self) -> tuple[cv2.VideoWriter, float]:
         ts = time.strftime("%Y%m%d_%H%M%S")
-        path = config.CONTINUOUS_DIR / "usb" / f"{ts}.avi"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        writer = self._make_writer(path, config.USB_FPS,
-                                   config.USB_WIDTH, config.USB_HEIGHT)
-        log.debug("USB continuous segment: %s", path)
+        seg_dir = config.CONTINUOUS_DIR / "usb"
+        path = seg_dir / f"{ts}.avi"
+        seg_dir.mkdir(parents=True, exist_ok=True)
+        writer = self._make_writer(path, config.USB2_FPS,
+                                   config.USB2_WIDTH, config.USB2_HEIGHT)
+        self._purge_old_segments(seg_dir, "*.avi")
+        log.debug("USB2 continuous segment: %s", path)
         return writer, time.time()
+
+    @staticmethod
+    def _purge_old_segments(directory: Path, pattern: str) -> None:
+        files = sorted(directory.glob(pattern))
+        for old in files[: max(0, len(files) - config.CONTINUOUS_MAX_SEGMENTS)]:
+            try:
+                old.unlink()
+                log.debug("Purged old segment: %s", old.name)
+            except Exception as e:
+                log.warning("Failed to purge %s: %s", old.name, e)
 
     @staticmethod
     def _make_writer(path: Path, fps: int, w: int, h: int) -> cv2.VideoWriter:

@@ -4,13 +4,13 @@ Flask streaming server for RPi #2
 Routes
 ------
   GET /                              메인 페이지 (라이브 스트림 + 이벤트 목록)
-  GET /stream/csi                    CSI 라이브 MJPEG 스트림
-  GET /stream/usb                    USB 라이브 MJPEG 스트림
+  GET /stream/usb1                   USB1 전방 라이브 MJPEG 스트림
+  GET /stream/usb                    USB2 후방 라이브 MJPEG 스트림
   GET /api/events                    이벤트 목록 JSON
   GET /api/events/sse                Server-Sent Events — 새 이벤트 push
   GET /api/events/<id>/status        MP4 변환 완료 여부 JSON
   GET /events/<id>                   이벤트 상세 페이지 (seekable 비디오)
-  GET /events/<id>/video/csi         CSI MP4 파일 서빙 (Range 요청 지원)
+  GET /events/<id>/video/usb1        USB1 전방 MP4 파일 서빙 (Range 요청 지원)
   GET /events/<id>/video/usb         USB MP4 파일 서빙 (Range 요청 지원)
 """
 import queue
@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-_csi = None
+_usb1 = None
 _usb = None
 _db: EventDB | None = None
 
@@ -35,9 +35,9 @@ _sse_queues: list[queue.Queue] = []
 _sse_lock = __import__("threading").Lock()
 
 
-def init(csi_recorder, usb_recorder, db: EventDB) -> None:
-    global _csi, _usb, _db
-    _csi, _usb, _db = csi_recorder, usb_recorder, db
+def init(usb1_recorder, usb_recorder, db: EventDB) -> None:
+    global _usb1, _usb, _db
+    _usb1, _usb, _db = usb1_recorder, usb_recorder, db
 
 
 def notify_new_event(event_id: str) -> None:
@@ -92,8 +92,8 @@ _INDEX_HTML = r"""<!DOCTYPE html>
 <h2>실시간 스트림</h2>
 <div class="streams">
   <div class="cam-box">
-    <span class="cam-label">CSI 카메라 (전방)</span>
-    <img src="/stream/csi" alt="CSI stream">
+    <span class="cam-label">USB 카메라 1 (전방)</span>
+    <img src="/stream/usb1" alt="USB1 stream">
   </div>
   <div class="cam-box">
     <span class="cam-label">USB 카메라 (후방)</span>
@@ -203,19 +203,17 @@ _EVENT_HTML = r"""<!DOCTYPE html>
 <h2>이벤트 클립</h2>
 <div class="players">
 
-  <!-- CSI -->
+  <!-- USB1 전방 -->
   <div class="player-box">
     <span class="player-label">
-      CSI (전방)
-      <span class="player-badge badge-live" id="csi-badge">즉시재생</span>
+      USB1 (전방)
+      <span class="player-badge badge-live" id="usb1-badge">즉시재생</span>
     </span>
-    <!-- MJPEG: 항상 즉시 재생 가능 (탐색 불가) -->
-    <img class="clip" id="csi-img" src="/events/{{ event_id }}/stream/csi">
-    <!-- MP4: 변환 완료 후 자동 활성화 (탐색 가능) -->
-    <video id="csi-video" controls>
-      <source src="/events/{{ event_id }}/video/csi" type="video/mp4">
+    <img class="clip" id="usb1-img" src="/events/{{ event_id }}/stream/usb1">
+    <video id="usb1-video" controls>
+      <source src="/events/{{ event_id }}/video/usb1" type="video/mp4">
     </video>
-    <div class="hint" id="csi-hint">MP4 변환 중… 완료되면 탐색 가능 버전으로 자동 전환</div>
+    <div class="hint" id="usb1-hint">MP4 변환 중… 완료되면 탐색 가능 버전으로 자동 전환</div>
   </div>
 
   <!-- USB -->
@@ -258,9 +256,9 @@ _EVENT_HTML = r"""<!DOCTYPE html>
     fetch('/api/events/' + EVENT_ID + '/status')
       .then(r => r.json())
       .then(data => {
-        if (data.csi_ready) switchToSeekable('csi');
+        if (data.usb1_ready) switchToSeekable('usb1');
         if (data.usb_ready) switchToSeekable('usb');
-        if (!data.csi_ready || !data.usb_ready) {
+        if (!data.usb1_ready || !data.usb_ready) {
           pollTimer = setTimeout(pollStatus, 2000);
         }
       })
@@ -282,11 +280,11 @@ def index():
     return render_template_string(_INDEX_HTML)
 
 
-@app.route("/stream/csi")
-def stream_csi():
-    if _csi is None:
+@app.route("/stream/usb1")
+def stream_usb1():
+    if _usb1 is None:
         abort(503)
-    return Response(_csi.iter_frames(),
+    return Response(_usb1.iter_frames(),
                     mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
@@ -340,7 +338,7 @@ def api_event_status(event_id: str):
     """MP4 변환 완료 여부를 반환 — 이벤트 상세 페이지 JS 폴링용."""
     base = config.EVENTS_DIR / f"event_{event_id}"
     return jsonify({
-        "csi_ready": (base / "csi_clip.mp4").exists(),
+        "usb1_ready": (base / "front_clip.mp4").exists(),
         "usb_ready": (base / "usb_clip.mp4").exists(),
     })
 
@@ -372,13 +370,13 @@ def event_detail(event_id: str):
     )
 
 
-@app.route("/events/<event_id>/stream/csi")
-def stream_event_csi(event_id: str):
+@app.route("/events/<event_id>/stream/usb1")
+def stream_event_usb1(event_id: str):
     """이벤트 클립 AVI를 MJPEG로 스트리밍 — MP4 변환 전 즉시재생용."""
-    avi = config.EVENTS_DIR / f"event_{event_id}" / "csi_clip.avi"
+    avi = config.EVENTS_DIR / f"event_{event_id}" / "front_clip.avi"
     if not avi.exists():
         abort(404)
-    fps = config.CSI_FPS
+    fps = config.USB1_FPS
 
     def generate():
         cap = cv2.VideoCapture(str(avi))
@@ -407,7 +405,7 @@ def stream_event_usb(event_id: str):
     avi = config.EVENTS_DIR / f"event_{event_id}" / "usb_clip.avi"
     if not avi.exists():
         abort(404)
-    fps = config.USB_FPS
+    fps = config.USB2_FPS
 
     def generate():
         cap = cv2.VideoCapture(str(avi))
@@ -430,14 +428,14 @@ def stream_event_usb(event_id: str):
     return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
-@app.route("/events/<event_id>/video/csi")
-def video_event_csi(event_id: str):
+@app.route("/events/<event_id>/video/usb1")
+def video_event_usb1(event_id: str):
     """MP4 우선 서빙, 없으면 AVI 폴백."""
     base = config.EVENTS_DIR / f"event_{event_id}"
-    if (base / "csi_clip.mp4").exists():
-        return send_file(str(base / "csi_clip.mp4"), mimetype="video/mp4", conditional=True)
-    if (base / "csi_clip.avi").exists():
-        return send_file(str(base / "csi_clip.avi"), mimetype="video/x-msvideo", conditional=True)
+    if (base / "front_clip.mp4").exists():
+        return send_file(str(base / "front_clip.mp4"), mimetype="video/mp4", conditional=True)
+    if (base / "front_clip.avi").exists():
+        return send_file(str(base / "front_clip.avi"), mimetype="video/x-msvideo", conditional=True)
     abort(404)
 
 

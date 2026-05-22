@@ -153,14 +153,26 @@ class MicRecorder:
 
     def _open_cont_writer(self) -> wave.Wave_write:
         ts = time.strftime("%Y%m%d_%H%M%S")
-        path = config.CONTINUOUS_DIR / "mic" / f"{ts}.wav"
-        path.parent.mkdir(parents=True, exist_ok=True)
+        seg_dir = config.CONTINUOUS_DIR / "mic"
+        path = seg_dir / f"{ts}.wav"
+        seg_dir.mkdir(parents=True, exist_ok=True)
         wf = wave.open(str(path), "wb")
         wf.setnchannels(config.AUDIO_CHANNELS)
         wf.setsampwidth(self._pa.get_sample_size(pyaudio.paInt16))
         wf.setframerate(config.AUDIO_RATE)
+        self._purge_old_segments(seg_dir, "*.wav")
         log.debug("Mic continuous segment: %s", path)
         return wf
+
+    @staticmethod
+    def _purge_old_segments(directory: Path, pattern: str) -> None:
+        files = sorted(directory.glob(pattern))
+        for old in files[: max(0, len(files) - config.CONTINUOUS_MAX_SEGMENTS)]:
+            try:
+                old.unlink()
+                log.debug("Purged old segment: %s", old.name)
+            except Exception as e:
+                log.warning("Failed to purge %s: %s", old.name, e)
 
     def _write_wav(self, path: Path, chunks: list[bytes]) -> None:
         with wave.open(str(path), "wb") as wf:

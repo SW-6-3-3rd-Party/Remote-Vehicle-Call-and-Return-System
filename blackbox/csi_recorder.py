@@ -1,17 +1,13 @@
 """
-CSI camera recorder (picamera2) — callback 방식
-
-capture_array() polling 대신 picamera2의 pre_callback을 사용.
-프레임마다 picamera2 내부 스레드에서 직접 호출되므로 외부 스레드 경쟁 없음.
+USB camera 1 recorder — Front / 전방 (cv2 / V4L2)
 """
 import logging
+import os
 import threading
 import time
 from pathlib import Path
 
-import libcamera
 import cv2
-from picamera2 import Picamera2
 
 from . import config
 from .ring_buffer import RingBuffer
@@ -21,129 +17,61 @@ log = logging.getLogger(__name__)
 _FrameItem = tuple[float, object]
 
 
-class CSIRecorder:
+class FrontUSBRecorder:
     def __init__(self):
-        maxlen = config.CSI_FPS * config.PRE_EVENT_SECS
+        maxlen = config.USB1_FPS * config.PRE_EVENT_SECS
         self.ring: RingBuffer[_FrameItem] = RingBuffer(maxlen)
 
-        self._cam: Picamera2 | None = None
+        self._stop_evt = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._cap: cv2.VideoCapture | None = None
+        self._device_idx: int | None = None  # set in start(), reused in reconnect
 
-        # live stream
         self._latest_jpeg: bytes = b""
         self._frame_cond = threading.Condition()
 
-        # continuous recording
         self._cont_writer: cv2.VideoWriter | None = None
-        self._cont_lock = threading.Lock()
         self._cont_start: float = 0.0
 
-        # event clip
         self._event_writer: cv2.VideoWriter | None = None
         self._event_lock = threading.Lock()
-
-        self._first_frame = True
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _find_csi_camera_num() -> int | None:
-        """USB/UVC 가 아닌 CSI 카메라의 번호를 반환. 없으면 None."""
-        try:
-            cameras = Picamera2.global_camera_info()
-        except Exception:
-            return None
-        for cam in cameras:
-            if "usb" not in cam.get("Id", "").lower():
-                return cam.get("Num", 0)
-        return None
-
     def start(self) -> None:
-        idx = self._find_csi_camera_num()
-        if idx is None:
-            raise RuntimeError(
-                "CSI 카메라(Pi Camera Module) 없음 — USB 카메라만 감지됨"
-            )
-        self._cam = Picamera2(idx)
-        cam_cfg = self._cam.create_video_configuration(
-            main={"size": (config.CSI_WIDTH, config.CSI_HEIGHT), "format": "RGB888"},
-            colour_space=libcamera.ColorSpace.Srgb(),
-        )
-        self._cam.configure(cam_cfg)
-        self._cam.pre_callback = self._on_frame
-
-        try:
-            self._cont_writer, self._cont_start = self._open_cont_writer()
-        except Exception as e:
-            log.error("CSI: continuous writer 초기화 실패 (%s) — 파일 저장 없이 계속", e)
-            self._cont_writer = None
-            self._cont_start = time.time()
-
-        self._cam.start()
-        log.info("CSI recorder started")
+        device_idx = config.USB1_DEVICE if config.USB1_DEVICE is not None \
+                     else self._find_usb_device()
+        self._device_idx = device_idx
+        self._cap = cv2.VideoCapture(device_idx, cv2.CAP_V4L2)
+        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.USB1_WIDTH)
+        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.USB1_HEIGHT)
+        self._cap.set(cv2.CAP_PROP_FPS,          config.USB1_FPS)
+        if not self._cap.isOpened():
+            raise RuntimeError(f"Cannot open front USB camera at /dev/video{device_idx}")
+        self._thread = threading.Thread(target=self._loop, name="usb1-loop", daemon=True)
+        self._thread.start()
+        log.info("Front USB recorder started (device=/dev/video%d)", device_idx)
 
     def stop(self) -> None:
-        if self._cam:
-            self._cam.pre_callback = None
-            self._cam.stop()
-        with self._cont_lock:
-            if self._cont_writer:
-                self._cont_writer.release()
-                self._cont_writer = None
-        log.info("CSI recorder stopped")
+        self._stop_evt.set()
+        if self._thread:
+            self._thread.join(timeout=5)
+        if self._cap:
+            self._cap.release()
+        if self._cont_writer:
+            self._cont_writer.release()
+        log.info("Front USB recorder stopped")
 
     # ------------------------------------------------------------------
-    # picamera2 callback (runs in picamera2's internal thread per frame)
+    # Live stream API
     # ------------------------------------------------------------------
 
-    def _on_frame(self, request) -> None:
-        try:
-            frame_rgb = request.make_array("main")
-        except Exception as e:
-            log.warning("CSI: make_array 실패: %s", e)
-            return
-
-        frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-        now = time.time()
-
-        if self._first_frame:
-            log.info("CSI: 첫 프레임 수신  shape=%s  dtype=%s",
-                     frame_bgr.shape, frame_bgr.dtype)
-            self._first_frame = False
-
-        # ring buffer
-        self.ring.push((now, frame_bgr))
-
-        # live stream JPEG 갱신
-        ok, jpeg_buf = cv2.imencode(".jpg", frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 75])
-        if ok:
-            with self._frame_cond:
-                self._latest_jpeg = jpeg_buf.tobytes()
-                self._frame_cond.notify_all()
-
-        # continuous recording
-        with self._cont_lock:
-            if self._cont_writer is not None:
-                self._cont_writer.write(frame_bgr)
-                if now - self._cont_start >= config.CONTINUOUS_SEGMENT_SECS:
-                    self._cont_writer.release()
-                    try:
-                        self._cont_writer, self._cont_start = self._open_cont_writer()
-                    except Exception as e:
-                        log.error("CSI: 세그먼트 로테이션 실패 (%s)", e)
-                        self._cont_writer = None
-
-        # event clip post-event 프레임
-        with self._event_lock:
-            if self._event_writer is not None:
-                f = self._ensure_bgr(frame_bgr)
-                if f is not None:
-                    self._event_writer.write(f)
-
-    # ------------------------------------------------------------------
-    # Live stream generator
-    # ------------------------------------------------------------------
+    def wait_frame(self, timeout: float = 2.0) -> bytes:
+        with self._frame_cond:
+            self._frame_cond.wait(timeout=timeout)
+            return self._latest_jpeg
 
     def iter_frames(self):
         while True:
@@ -159,77 +87,211 @@ class CSIRecorder:
                 )
 
     # ------------------------------------------------------------------
+    # Main capture loop
+    # ------------------------------------------------------------------
+
+    def _reconnect(self) -> bool:
+        log.warning("Front USB camera disconnected — attempting reconnect …")
+        if self._cap:
+            self._cap.release()
+            self._cap = None
+
+        device_idx = self._device_idx  # always reconnect to the same physical device
+
+        for attempt in range(1, 6):
+            time.sleep(2.0)
+            if self._stop_evt.is_set():
+                return False
+            try:
+                cap = cv2.VideoCapture(device_idx, cv2.CAP_V4L2)
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.USB1_WIDTH)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.USB1_HEIGHT)
+                cap.set(cv2.CAP_PROP_FPS,          config.USB1_FPS)
+                ret, _ = cap.read()
+                if cap.isOpened() and ret:
+                    self._cap = cap
+                    log.info("Front USB camera reconnected (attempt %d)", attempt)
+                    return True
+                cap.release()
+            except Exception as e:
+                log.warning("Front USB reconnect attempt %d failed: %s", attempt, e)
+
+        log.error("Front USB camera reconnect failed after 5 attempts")
+        return False
+
+    def _loop(self) -> None:
+        try:
+            self._cont_writer, self._cont_start = self._open_cont_writer()
+        except Exception as e:
+            log.error("USB1: continuous writer 초기화 실패 (%s) — 파일 저장 없이 계속", e)
+            self._cont_writer = None
+            self._cont_start = time.time()
+
+        consecutive_failures = 0
+
+        while not self._stop_evt.is_set():
+            try:
+                ret, frame_bgr = self._cap.read()
+                if not ret:
+                    consecutive_failures += 1
+                    if consecutive_failures >= 30:
+                        consecutive_failures = 0
+                        if not self._reconnect():
+                            break
+                    else:
+                        time.sleep(0.01)
+                    continue
+                consecutive_failures = 0
+                now = time.time()
+
+                self.ring.push((now, frame_bgr))
+
+                ok, jpeg_buf = cv2.imencode(
+                    ".jpg", frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 75]
+                )
+                if ok:
+                    with self._frame_cond:
+                        self._latest_jpeg = jpeg_buf.tobytes()
+                        self._frame_cond.notify_all()
+
+                if self._cont_writer is not None:
+                    self._cont_writer.write(frame_bgr)
+                    if now - self._cont_start >= config.CONTINUOUS_SEGMENT_SECS:
+                        self._cont_writer.release()
+                        try:
+                            self._cont_writer, self._cont_start = self._open_cont_writer()
+                        except Exception as e:
+                            log.error("USB1: 세그먼트 로테이션 실패 (%s)", e)
+                            self._cont_writer = None
+
+                with self._event_lock:
+                    if self._event_writer is not None:
+                        self._event_writer.write(frame_bgr)
+
+            except Exception as e:
+                log.warning("USB1 캡처 오류: %s", e)
+
+        if self._cont_writer is not None:
+            self._cont_writer.release()
+
+    # ------------------------------------------------------------------
     # Event clip API
     # ------------------------------------------------------------------
 
     def start_event_clip(self, event_dir: Path) -> None:
-        path = event_dir / "csi_clip.avi"
-        writer = self._make_writer(path, config.CSI_FPS,
-                                   config.CSI_WIDTH, config.CSI_HEIGHT)
+        path = event_dir / "front_clip.avi"
+        writer = self._make_writer(path, config.USB1_FPS,
+                                   config.USB1_WIDTH, config.USB1_HEIGHT)
         if not writer.isOpened():
-            log.error("CSI VideoWriter 열기 실패: %s", path)
+            log.error("USB1 VideoWriter 열기 실패: %s", path)
             return
 
         snapshot = self.ring.snapshot()
-        written = 0
-        for _, frame in snapshot:
-            f = self._ensure_bgr(frame)
-            if f is None:
-                continue
-            writer.write(f)
-            written += 1
+        cutoff_ts = time.time() - config.PRE_EVENT_SECS
+        filtered = [(ts, frame) for ts, frame in snapshot if ts >= cutoff_ts]
+        for _, frame in filtered:
+            writer.write(frame)
 
         with self._event_lock:
             self._event_writer = writer
 
-        log.info("CSI 이벤트 클립 시작  ring=%d  written=%d  path=%s",
-                 len(snapshot), written, path)
+        log.info("USB1 이벤트 클립 시작  pre=%d프레임  path=%s", len(filtered), path)
 
     def stop_event_clip(self) -> None:
         with self._event_lock:
             if self._event_writer is not None:
                 self._event_writer.release()
                 self._event_writer = None
-        log.info("CSI 이벤트 클립 저장 완료")
+        log.info("USB1 이벤트 클립 저장 완료")
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _find_usb_device() -> int:
+        """전방 카메라 장치 번호 반환.
+
+        USB3 포트(/usb2/) 우선 탐색; 없으면 USB2 포트(/usb1/)에서
+        두 번째로 감지된 물리 장치(후방 카메라 제외)를 전방으로 사용.
+        """
+        usb2_devs: dict[str, int] = {}  # phys_port_path -> min_video_idx
+        usb1_devs: dict[str, int] = {}
+
+        for idx in range(32):
+            if not os.path.exists(f"/dev/video{idx}"):
+                continue
+            try:
+                dev_path = os.path.realpath(f"/sys/class/video4linux/video{idx}/device")
+            except OSError:
+                continue
+            try:
+                driver_link = os.readlink(
+                    f"/sys/class/video4linux/video{idx}/device/driver"
+                )
+                if "uvcvideo" not in driver_link:
+                    continue
+            except OSError:
+                continue
+            phys = str(Path(dev_path).parent)  # 물리 USB 포트 경로 (e.g. .../1-1.3)
+            if "/usb2/" in dev_path:
+                usb2_devs[phys] = min(usb2_devs.get(phys, idx), idx)
+            elif "/usb1/" in dev_path:
+                usb1_devs[phys] = min(usb1_devs.get(phys, idx), idx)
+
+        def _try_open(video_idx: int, label: str) -> bool:
+            cap = cv2.VideoCapture(video_idx, cv2.CAP_V4L2)
+            if not cap.isOpened():
+                cap.release()
+                return False
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS,          30)
+            ret = False
+            for _ in range(5):
+                ret, _ = cap.read()
+                if ret:
+                    break
+                time.sleep(0.3)
+            cap.release()
+            if ret:
+                log.info("Front camera auto-detected at /dev/video%d (%s)", video_idx, label)
+            return ret
+
+        # USB3 포트 우선
+        for video_idx in sorted(usb2_devs.values()):
+            if _try_open(video_idx, "USB3 port"):
+                return video_idx
+
+        # USB2 두 번째 물리 장치 (인덱스 낮은 것이 후방, 두 번째가 전방)
+        usb1_sorted = sorted(usb1_devs.values())
+        if len(usb1_sorted) >= 2:
+            video_idx = usb1_sorted[1]
+            if _try_open(video_idx, "USB2 port, 2nd device"):
+                return video_idx
+
+        raise RuntimeError(
+            "전방 카메라를 찾을 수 없습니다 — "
+            "USB3(파란색) 포트 또는 USB2 두 번째 포트에 연결하세요"
+        )
+
     def _open_cont_writer(self) -> tuple[cv2.VideoWriter, float]:
         ts = time.strftime("%Y%m%d_%H%M%S")
-        path = config.CONTINUOUS_DIR / "csi" / f"{ts}.avi"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        writer = self._make_writer(path, config.CSI_FPS,
-                                   config.CSI_WIDTH, config.CSI_HEIGHT)
+        seg_dir = config.CONTINUOUS_DIR / "front"
+        path = seg_dir / f"{ts}.avi"
+        seg_dir.mkdir(parents=True, exist_ok=True)
+        writer = self._make_writer(path, config.USB1_FPS,
+                                   config.USB1_WIDTH, config.USB1_HEIGHT)
         if not writer.isOpened():
             raise RuntimeError(f"VideoWriter 열기 실패: {path}")
-        log.debug("CSI 연속 세그먼트: %s", path)
+        log.debug("USB1 연속 세그먼트: %s", path)
         return writer, time.time()
-
-    @staticmethod
-    def _ensure_bgr(frame):
-        """프레임을 (H, W, 3) uint8 BGR로 정규화. 불가능하면 None 반환."""
-        import numpy as np
-        if frame is None:
-            return None
-        # (1, H, W, C) → (H, W, C)
-        if frame.ndim == 4:
-            frame = frame[0]
-        if frame.ndim != 3:
-            log.warning("CSI: 예상 밖 프레임 ndim=%d shape=%s", frame.ndim, frame.shape)
-            return None
-        h, w, c = frame.shape
-        if c == 4:
-            frame = frame[:, :, :3]
-        elif c != 3:
-            log.warning("CSI: 예상 밖 채널 수 c=%d shape=%s", c, frame.shape)
-            return None
-        if frame.dtype != np.uint8:
-            frame = np.clip(frame, 0, 255).astype(np.uint8)
-        return frame
 
     @staticmethod
     def _make_writer(path: Path, fps: int, w: int, h: int) -> cv2.VideoWriter:
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         return cv2.VideoWriter(str(path), fourcc, fps, (w, h))
+
+
+# 하위 호환 별칭
+CSIRecorder = FrontUSBRecorder
