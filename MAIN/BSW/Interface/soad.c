@@ -62,9 +62,7 @@ void SoAd_IfTransmit(uint16_t port, uint8_t* payload, uint16_t length)
         TcpSend(payload, length);
     else if (port == 5001)
     {
-        ip_addr_t ip;
-        IP4_ADDR(&ip, 192,168,1,121);
-        UdpSend(&ip, port, payload, length);
+        UdpSendBack(port, payload, length);
     }
     else if (port == 5002)
     {
