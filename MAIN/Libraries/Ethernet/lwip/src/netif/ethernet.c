@@ -77,9 +77,11 @@ const struct eth_addr ethzero = {{0, 0, 0, 0, 0, 0}};
  * @see ETHARP_SUPPORT_VLAN
  * @see LWIP_HOOK_VLAN_CHECK
  */
+
 err_t
 ethernet_input(struct pbuf *p, struct netif *netif)
 {
+
   struct eth_hdr *ethhdr;
   u16_t type;
 #if LWIP_ARP || ETHARP_SUPPORT_VLAN || LWIP_IPV6

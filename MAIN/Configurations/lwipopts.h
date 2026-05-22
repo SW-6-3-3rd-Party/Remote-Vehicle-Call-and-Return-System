@@ -52,13 +52,13 @@
 #define LWIP_LOOPIF_MULTICAST 1
 
 //vlan
-#define ETHARP_SUPPORT_VLAN     1
-
-#define LWIP_HOOK_VLAN_CHECK(netif, eth_hdr, vlan_hdr) \
-        my_vlan_check(netif, eth_hdr, vlan_hdr)
-
-#define LWIP_HOOK_VLAN_SET(netif, p, src, dst, eth_type) \
-        my_vlan_set(netif, p, src, dst, eth_type)
+//#define ETHARP_SUPPORT_VLAN     1
+//
+//#define LWIP_HOOK_VLAN_CHECK(netif, eth_hdr, vlan_hdr) \
+//        my_vlan_check(netif, eth_hdr, vlan_hdr)
+//
+//#define LWIP_HOOK_VLAN_SET(netif, p, src, dst, eth_type) \
+//        my_vlan_set(netif, p, src, dst, eth_type)
 ///////////////////////////////////////////////////////////////////
 
 #define ETH_PAD_SIZE            2                   /* Add 2 bytes before the Ethernet header to ensure payload alignment   */

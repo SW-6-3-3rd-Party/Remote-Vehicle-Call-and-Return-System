@@ -76,9 +76,11 @@ static void icmp_send_response(struct pbuf *p, u8_t type, u8_t code);
  * @param p the icmp echo request packet, p->payload pointing to the icmp header
  * @param inp the netif on which this packet was received
  */
+
 void
 icmp_input(struct pbuf *p, struct netif *inp)
 {
+
   u8_t type;
 #ifdef LWIP_DEBUG
   u8_t code;

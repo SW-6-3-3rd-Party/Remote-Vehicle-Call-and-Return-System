@@ -55,7 +55,6 @@ void core0_main(void)
 
     Can_Init();
     Asclin0_InitUart();
-
     eth_addr_t ethAddr = {
                 .addr[0] = 0x00,
                 .addr[1] = 0x00,
@@ -78,5 +77,6 @@ void core0_main(void)
         COM_TimeOut();
         COM_Tx_MainFunction();
         SoAd_MainFunction();
+
     }
 }

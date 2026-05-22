@@ -4,6 +4,7 @@
 #include "lwip/stats.h"
 #include "lwip/udp.h"
 #include "lwip/pbuf.h"
+#include "ip_addr.h"
 #include "soad.h"
 
 #include <string.h>
@@ -11,13 +12,16 @@
 #if LWIP_UDP
 
 #define CTR_PCB 5000
+#define DOIP_PCB 13400
 #define SOMEIP_PCB 30492
 
 static struct udp_pcb *udp_send_pcb;
 static struct udp_pcb *udp_ctr_pcb;
+static struct udp_pcb *udp_doip_pcb;
 static struct udp_pcb *udp_someip_pcb;
 
-static ip_addr_t *udp_addr;
+static ip_addr_t udp_addr;
+
 
 static void udp_receive_recv(void *arg, struct udp_pcb *upcb, struct pbuf *p,
                              const ip_addr_t *addr, u16_t port)
@@ -26,7 +30,8 @@ static void udp_receive_recv(void *arg, struct udp_pcb *upcb, struct pbuf *p,
     if (p != NULL)
     {
         /* SoAd 계층으로 데이터 전달 */
-        udp_addr = addr;
+
+        ip_addr_copy(udp_addr, *addr);
         SoAd_RxIndication(upcb->local_port, (uint8_t*)p->payload, p->len);
 
         /* 메모리 누수 방지를 위해 pbuf 반드시 해제 */
@@ -46,6 +51,15 @@ void UdpInit(void)
         err = udp_bind(udp_ctr_pcb, IP_ANY_TYPE, CTR_PCB);
         if (err == ERR_OK) {
             udp_recv(udp_ctr_pcb, udp_receive_recv, NULL);
+        }
+    }
+
+    udp_doip_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+    if (udp_doip_pcb != NULL) {
+        err_t err;
+        err = udp_bind(udp_doip_pcb, IP_ANY_TYPE, CTR_PCB);
+        if (err == ERR_OK) {
+            udp_recv(udp_doip_pcb, udp_receive_recv, NULL);
         }
     }
 
@@ -93,7 +107,7 @@ err_t UdpSend(const ip_addr_t *dst_addr, u16_t dst_port,
 err_t UdpSendBack(u16_t dst_port,
               const void *data, u16_t len)
 {
-    ip_addr_t *dst_addr = udp_addr;
+    ip_addr_t *dst_addr = &udp_addr;
     struct pbuf *p;
     err_t err;
 
