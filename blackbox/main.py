@@ -79,7 +79,7 @@ def main() -> None:
     )
     flask_thread.start()
 
-    someip_server.start_in_thread(db)
+    someip_server.start_in_thread(db, event_trigger=trigger)
 
     udp_stream = UDPStreamServer(usb if usb_ok else None)
     udp_stream.start()
@@ -91,6 +91,7 @@ def main() -> None:
     )
     doip_gw = DoIPGateway(doip_cfg)
     doip_gw.attach_recorders(
+        usb1=usb1 if usb1_ok else None,
         usb=usb if usb_ok else None,
         mic=mic if mic_ok else None,
     )

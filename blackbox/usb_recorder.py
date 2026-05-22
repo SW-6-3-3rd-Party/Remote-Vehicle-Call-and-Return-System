@@ -32,6 +32,7 @@ class USBRecorder:
 
         # live stream
         self._latest_jpeg: bytes = b""
+        self._latest_frame_ts: float = 0.0
         self._frame_cond = threading.Condition()
 
         # continuous recording
@@ -79,6 +80,10 @@ class USBRecorder:
         with self._frame_cond:
             self._frame_cond.wait(timeout=timeout)
             return self._latest_jpeg
+
+    def has_recent_frame(self, max_age: float = 2.0) -> bool:
+        with self._frame_cond:
+            return bool(self._latest_jpeg) and (time.time() - self._latest_frame_ts) <= max_age
 
     def iter_frames(self):
         while True:
@@ -160,6 +165,7 @@ class USBRecorder:
                 if ok:
                     with self._frame_cond:
                         self._latest_jpeg = jpeg_buf.tobytes()
+                        self._latest_frame_ts = now
                         self._frame_cond.notify_all()
 
                 if self._cont_writer is not None:

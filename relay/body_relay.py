@@ -11,7 +11,7 @@ Body ECU → RPi #2 이벤트 중계 (RPi #1에서 실행)
 
 실행 예:
   python3 body_relay.py
-  python3 body_relay.py --listen-port 5200 --rpi2-ip 192.168.20.2 --rpi2-port 5201
+  python3 body_relay.py --listen-port 5200 --rpi2-ip 192.168.20.2 --rpi2-port 5011
 """
 
 import argparse
@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 LISTEN_PORT = 5200         # Body ECU → RPi #1 수신 포트
 RPI2_IP     = "192.168.20.2"
-RPI2_PORT   = 5201         # RPi #2 수신 포트 (config.ECU_TRIGGER_LISTEN_PORT)
+RPI2_PORT   = 5011         # RPi #2 수신 포트 (config.ECU_TRIGGER_LISTEN_PORT)
 
 
 def relay(listen_port: int, rpi2_ip: str, rpi2_port: int) -> None:

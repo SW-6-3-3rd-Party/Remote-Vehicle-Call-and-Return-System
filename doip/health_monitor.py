@@ -5,8 +5,8 @@ System Health Monitor for RPi #2
 
 점검 방법 (사양서 기준):
   eth0      — /sys/class/net/eth0/operstate == "up"
-  전방 카메라 — /dev/video0 존재 및 스트림 확인 (USB1)
-  후방 카메라 — /dev/video2 존재 여부
+  전방 카메라 — 실행 중인 USB1 recorder의 최근 프레임 확인
+  후방 카메라 — 실행 중인 USB recorder의 최근 프레임 확인
   마이크     — /proc/asound/card0 존재 여부
   Flask      — TCP 8080 포트 listen 여부
   SOME/IP    — UDP 30491 포트 listen 여부
@@ -72,10 +72,15 @@ class HealthMonitor:
         self._interval    = check_interval
         self._stop_evt    = threading.Event()
         self._thread: threading.Thread | None = None
+        self._usb1 = None
+        self._usb = None
+        self._mic = None
         self.status = SystemStatus()
 
-    def attach_recorders(self, usb=None, mic=None) -> None:
-        pass   # 사양서 기준으로 장치 파일 경로만 확인하므로 recorder 불필요
+    def attach_recorders(self, usb1=None, usb=None, mic=None) -> None:
+        self._usb1 = usb1
+        self._usb = usb
+        self._mic = mic
 
     def start(self) -> None:
         self._thread = threading.Thread(
@@ -118,14 +123,18 @@ class HealthMonitor:
         self._set_or_clear(ok, DTCCode.ETH0_ERROR)
 
     def _check_usb1_camera(self) -> None:
-        ok = self._test_camera_stream(0) if Path("/dev/video0").exists() else False
+        ok = self._recorder_has_recent_frame(self._usb1)
+        if self._usb1 is None:
+            ok = self._test_camera_stream(0) if Path("/dev/video0").exists() else False
         self.status.update(usb1=ok)
         self._set_or_clear(ok, DTCCode.USB1_CAMERA_FAIL)
 
     def _check_usb_camera(self) -> None:
-        exists = Path("/dev/video2").exists()
-        can_stream = self._test_camera_stream(2) if exists else False
-        ok = exists and can_stream
+        ok = self._recorder_has_recent_frame(self._usb)
+        if self._usb is None:
+            exists = Path("/dev/video2").exists()
+            can_stream = self._test_camera_stream(2) if exists else False
+            ok = exists and can_stream
         self.status.update(usb=ok)
         self._set_or_clear(ok, DTCCode.USB_CAMERA_FAIL)
 
@@ -168,6 +177,21 @@ class HealthMonitor:
             self._dtc.clear_active(code)
         else:
             self._dtc.set_active(code)
+
+    @staticmethod
+    def _recorder_has_recent_frame(recorder, max_age: float = 2.0) -> bool:
+        if recorder is None:
+            return False
+        checker = getattr(recorder, "has_recent_frame", None)
+        if checker is not None:
+            try:
+                return bool(checker(max_age=max_age))
+            except Exception:
+                return False
+        try:
+            return bool(recorder.wait_frame(timeout=0.5))
+        except Exception:
+            return False
 
     @staticmethod
     def _test_camera_stream(device_idx: int) -> bool:

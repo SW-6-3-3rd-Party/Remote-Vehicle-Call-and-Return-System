@@ -1,6 +1,6 @@
 """
 SOME/IP server — AccidentHistoryService
-  Service ID : 0x1000  /  Instance ID : 0x0001
+  Service ID : config.ACCIDENT_SERVICE_ID  /  Instance ID : 0x0001
   Method     : GetAccidentList (0x0001)
 
 blackbox.main 에서 별도 스레드로 실행된다.
@@ -8,7 +8,11 @@ blackbox.main 에서 별도 스레드로 실행된다.
 import asyncio
 import json
 import logging
+import socket
+import subprocess
+import sys
 import time
+from pathlib import Path
 from typing import Tuple
 
 from someipy import (
@@ -28,8 +32,55 @@ from .event_db import EventDB
 
 log = logging.getLogger(__name__)
 
+_DAEMON_SOCKET = Path("/tmp/someipyd.sock")
+_daemon_proc: subprocess.Popen | None = None
 
-async def _run(db: EventDB) -> None:
+
+def _can_connect_daemon(timeout: float = 0.2) -> bool:
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            s.connect(str(_DAEMON_SOCKET))
+            return True
+    except OSError:
+        return False
+
+
+def _ensure_someipyd_running() -> None:
+    global _daemon_proc
+
+    if _can_connect_daemon():
+        return
+
+    if _DAEMON_SOCKET.exists():
+        try:
+            _DAEMON_SOCKET.unlink()
+        except OSError:
+            pass
+
+    config_path = Path(__file__).resolve().parent.parent / "someipyd.json"
+    log_path = config.RECORDINGS_BASE / "someipyd.log"
+    config.RECORDINGS_BASE.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        str(Path(sys.executable).parent / "someipyd"),
+        "--config", str(config_path),
+        "--log-path", str(log_path),
+    ]
+    _daemon_proc = subprocess.Popen(cmd)
+
+    deadline = time.time() + 3.0
+    while time.time() < deadline:
+        if _can_connect_daemon():
+            log.info("someipyd daemon started  config=%s", config_path)
+            return
+        if _daemon_proc.poll() is not None:
+            raise RuntimeError(f"someipyd exited early with code {_daemon_proc.returncode}")
+        time.sleep(0.1)
+
+    raise RuntimeError("someipyd daemon did not become ready")
+
+
+async def _run(db: EventDB, event_trigger=None) -> None:
     set_someipy_log_level(logging.WARNING)
 
     async def get_record_list_handler(
@@ -46,14 +97,22 @@ async def _run(db: EventDB) -> None:
 
             if vehicle_id is None:
                 resp = {"result": "INTERNAL_ERROR", "error_code": 2,
+                        "recording_started": False,
                         "accident_count": 0, "accidents": []}
             elif vehicle_id != config.VEHICLE_ID:
                 resp = {"result": "EMPTY", "error_code": 1,
+                        "recording_started": False,
                         "accident_count": 0, "accidents": []}
             else:
+                recording_started = False
+                if event_trigger is not None:
+                    recording_started = bool(
+                        event_trigger.trigger(source=f"SOME/IP {addr[0]}:{addr[1]}")
+                    )
                 events = db.get_events(limit=50)
                 if not events:
                     resp = {"result": "EMPTY", "error_code": 1,
+                            "recording_started": recording_started,
                             "accident_count": 0, "accidents": []}
                 else:
                     accidents = [
@@ -73,12 +132,14 @@ async def _run(db: EventDB) -> None:
                         for ev in events
                     ]
                     resp = {"result": "OK", "error_code": 0,
+                            "recording_started": recording_started,
                             "accident_count": len(accidents),
                             "accidents": accidents}
 
         except Exception:
             log.exception("GetRecordList 처리 오류")
             resp = {"result": "INTERNAL_ERROR", "error_code": 2,
+                    "recording_started": False,
                     "accident_count": 0, "accidents": []}
 
         result = MethodResult()
@@ -91,6 +152,7 @@ async def _run(db: EventDB) -> None:
                  resp["result"], resp["accident_count"])
         return result
 
+    _ensure_someipyd_running()
     daemon = await connect_to_someipy_daemon()
 
     method = Method(
@@ -131,7 +193,7 @@ async def _run(db: EventDB) -> None:
         await daemon.disconnect_from_daemon()
 
 
-def start_in_thread(db: EventDB) -> None:
+def start_in_thread(db: EventDB, event_trigger=None) -> None:
     """별도 스레드에서 asyncio 루프를 돌려 SOME/IP 서버를 시작한다."""
     import threading
 
@@ -139,7 +201,7 @@ def start_in_thread(db: EventDB) -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(_run(db))
+            loop.run_until_complete(_run(db, event_trigger=event_trigger))
         except Exception as e:
             log.error("SOME/IP 서버 오류: %s", e)
         finally:

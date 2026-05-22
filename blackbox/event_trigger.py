@@ -166,19 +166,29 @@ class EventTrigger:
             self._on_trigger()
         sock.close()
 
-    def _on_trigger(self) -> None:
+    def trigger(self, source: str = "manual") -> bool:
+        """Trigger an event recording from a non-UDP source."""
+        accepted = self._on_trigger()
+        if accepted:
+            log.info("Event trigger accepted from %s", source)
+        else:
+            log.info("Event trigger ignored from %s", source)
+        return accepted
+
+    def _on_trigger(self) -> bool:
         with self._lock:
             now = time.time()
             if self._in_event:
                 log.debug("Event already in progress — ignoring trigger")
-                return
+                return False
             if now - self._last_event_end < _POST_EVENT_COOLDOWN_SECS:
                 remaining = _POST_EVENT_COOLDOWN_SECS - (now - self._last_event_end)
                 log.debug("Post-event cooldown active (%.1fs left) — ignoring trigger", remaining)
-                return
+                return False
             self._in_event = True
         threading.Thread(target=self._handle_event, name="event-handler",
                          daemon=True).start()
+        return True
 
     # ------------------------------------------------------------------
     # Event handling

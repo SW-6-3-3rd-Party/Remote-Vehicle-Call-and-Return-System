@@ -15,10 +15,11 @@ Usage (standalone):
 
 Usage (blackbox.main):
     gw = DoIPGateway(build_config(...))
-    gw.attach_recorders(usb=usb_rec, mic=mic_rec)
+    gw.attach_recorders(usb1=front_rec, usb=rear_rec, mic=mic_rec)
     gw.start_in_thread()
 """
 import asyncio
+import contextlib
 import logging
 import socket
 import threading
@@ -84,37 +85,66 @@ class DoIPGateway:
         self.tcp_server = DoIPTCPServer(config, self.local_uds)
         self.udp_handler = DoIPUDPHandler(config, tcp_server=self.tcp_server)
         self._udp_transport = None
+        self._announce_task: asyncio.Task | None = None
+        self._health_started = False
 
-    def attach_recorders(self, usb=None, mic=None) -> None:
-        self.health.attach_recorders(usb=usb, mic=mic)
+    def attach_recorders(self, usb1=None, usb=None, mic=None) -> None:
+        self.health.attach_recorders(usb1=usb1, usb=usb, mic=mic)
 
     # ------------------------------------------------------------------
 
     async def start(self) -> None:
-        self.health.start()
+        try:
+            await self.tcp_server.start()
+            await self._start_udp()
 
-        loop = asyncio.get_running_loop()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.bind(("0.0.0.0", DOIP_UDP_PORT))
-        self._udp_transport, _ = await loop.create_datagram_endpoint(
-            lambda: self.udp_handler, sock=sock
-        )
+            self.health.start()
+            self._health_started = True
 
-        await self.tcp_server.start()
-        asyncio.create_task(self.udp_handler.announce_loop())
+            self._announce_task = asyncio.create_task(self.udp_handler.announce_loop())
+
+        except Exception:
+            await self.stop()
+            raise
 
         log.info(
             "DoIP Gateway running  LA=0x%04X  VIN=%s  TCP/UDP %d",
             self.cfg["logical_address"], self.cfg["vin"], DOIP_TCP_PORT,
         )
 
+    async def _start_udp(self) -> None:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.bind(("0.0.0.0", DOIP_UDP_PORT))
+
+            loop = asyncio.get_running_loop()
+            self._udp_transport, _ = await loop.create_datagram_endpoint(
+                lambda: self.udp_handler, sock=sock
+            )
+        except Exception:
+            sock.close()
+            raise
+
     async def stop(self) -> None:
-        self.health.stop()
-        await self.tcp_server.stop()
+        if self._announce_task:
+            self._announce_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._announce_task
+            self._announce_task = None
+
         if self._udp_transport:
             self._udp_transport.close()
+            self._udp_transport = None
+            self.udp_handler.transport = None
+
+        await self.tcp_server.stop()
+
+        if self._health_started:
+            self.health.stop()
+            self._health_started = False
+
         log.info("DoIP Gateway stopped")
 
     # ------------------------------------------------------------------
