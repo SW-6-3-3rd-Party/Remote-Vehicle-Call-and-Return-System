@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-const PC_CONTROL_BASE_URL = "http://127.0.0.1:5100";
-const GATEWAY_BASE_URL = "http://192.168.1.1:5000";
+const PC_CONTROL_BASE_URL = "http://127.0.0.1:5000";
+const MEDIA_PI_BASE_URL = "http://192.168.20.2:8080";
 
 // 원격 조종 제어 / 상태 조회는 PC backend 사용
 const REMOTE_START_URL = `${PC_CONTROL_BASE_URL}/remote-control/start`;
@@ -9,10 +9,9 @@ const REMOTE_STOP_URL = `${PC_CONTROL_BASE_URL}/remote-control/stop`;
 const CONTROL_URL = `${PC_CONTROL_BASE_URL}/control`;
 const VEHICLE_STATUS_URL = `${PC_CONTROL_BASE_URL}/vehicle/status`;
 
-// 부저 SOME/IP, 영상은 Gateway 그대로 사용
-const BUZZER_CONTROL_URL = `${GATEWAY_BASE_URL}/control/buzzer`;
-const LIVE_FRONT_URL = `${GATEWAY_BASE_URL}/live/front`;
-const LIVE_REAR_URL = `${GATEWAY_BASE_URL}/live/rear`;
+const WARNING_LIGHT_URL = `${PC_CONTROL_BASE_URL}/body/warning-light`;
+const LIVE_FRONT_URL = `${MEDIA_PI_BASE_URL}/stream/usb1`;
+const LIVE_REAR_URL = `${MEDIA_PI_BASE_URL}/stream/usb`;
 
 const initialPressedKeys = {
   ArrowUp: false,
@@ -31,8 +30,9 @@ function RemoteControlPage({ onBack }) {
   const [rightSignalOn, setRightSignalOn] = useState(false);
   const [hazardOn, setHazardOn] = useState(false);
   const [ignitionOn, setIgnitionOn] = useState(false);
-  const [buzzerOn, setBuzzerOn] = useState(false);
+  const [warningLightOn, setWarningLightOn] = useState(false);
   const [hornOn, setHornOn] = useState(false);
+  const [latestEventName, setLatestEventName] = useState("");
 
   const [pressedKeys, setPressedKeys] = useState(initialPressedKeys);
 
@@ -118,11 +118,16 @@ function RemoteControlPage({ onBack }) {
         const data = await response.json();
 
         if (data.result === "OK") {
-          if (typeof data.speed === "number") {
+          if (data.speed_connected && typeof data.speed === "number") {
             setSpeed(data.speed);
+            setLastSpeedReceivedAt(Date.now());
+          } else if (!data.speed_connected) {
+            setSpeed(null);
           }
 
-          setLastSpeedReceivedAt(Date.now());
+          if (data.latest_event?.event_name) {
+            setLatestEventName(data.latest_event.event_name);
+          }
         }
       } catch (error) {
         console.error("차량 상태 수신 실패:", error);
@@ -286,33 +291,34 @@ const handleBack = () => {
     sendControlCommand("horn", "OFF");
   };
 
-const handleBuzzerClick = async () => {
-  const next = !buzzerOn;
-  const nextBuzzerState = next ? 1 : 0;
+const handleWarningLightClick = async () => {
+  const next = !warningLightOn;
+  const nextState = next ? 1 : 0;
 
   try {
-    const response = await fetch(BUZZER_CONTROL_URL, {
+    const response = await fetch(WARNING_LIGHT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        vehicle_id: 1,
-        buzzer_state: nextBuzzerState,
+        enable: nextState,
       }),
     });
 
     const data = await response.json();
 
-    if (data.result !== "OK") {
+    const resultText = String(data.result || "").toUpperCase();
+
+    if (resultText !== "OK") {
       alert(data.message || data.detail || "제어 명령 오류");
       return;
     }
 
-    setBuzzerOn(data.buzzer_state === 1);
+    setWarningLightOn(data.state === 1);
   } catch (error) {
-    console.error("부저 제어 실패:", error);
-    alert("Gateway 서버에 연결할 수 없습니다.");
+    console.error("충돌방지 경고등 제어 실패:", error);
+    alert("PC backend 서버에 연결할 수 없습니다.");
   }
 };
 
@@ -349,7 +355,7 @@ const handleBuzzerClick = async () => {
           </span>
 
           <span className="battery-pill">
-            배터리: 78%
+            이벤트: {latestEventName || "없음"}
             <span className="battery-icon">
               <span />
             </span>
@@ -434,13 +440,13 @@ const handleBuzzerClick = async () => {
           </section>
 
           <section className="buzzer-card side-buzzer-card">
-            <h3>후진 경고음</h3>
+            <h3>충돌방지 경고등</h3>
 
             <button
-              className={`buzzer-button ${buzzerOn ? "active" : ""}`}
-              onClick={handleBuzzerClick}
+              className={`buzzer-button ${warningLightOn ? "active" : ""}`}
+              onClick={handleWarningLightClick}
             >
-              🔊
+              !
             </button>
           </section>
         </aside>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API_URL = "http://192.168.1.1:5000/accidents?vehicle_id=1";
+const API_URL = "http://127.0.0.1:5000/accidents";
 
 function getDrivingStateText(state) {
   if (state === 1) return "주행 중";
@@ -187,7 +187,7 @@ function AccidentHistoryPage({ onBack }) {
       console.error(error);
       setResult("INTERNAL_ERROR");
       setAccidents([]);
-      setErrorMessage("Gateway 서버에 연결할 수 없습니다.");
+      setErrorMessage("PC backend 서버에 연결할 수 없습니다.");
     } finally {
       setLoading(false);
     }

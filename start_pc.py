@@ -13,14 +13,7 @@ NPM = shutil.which("npm") or shutil.which("npm.cmd") or "npm"
 
 PROCESSES = [
     (
-        "diagnostic-backend",
-        [sys.executable, str(ROOT / "src" / "pc_backend" / "server.py")],
-        {
-            "PYTHONUNBUFFERED": "1",
-        },
-    ),
-    (
-        "control-backend",
+        "pc-backend",
         [sys.executable, str(ROOT / "pc_control_backend.py")],
         {
             "PYTHONUNBUFFERED": "1",
@@ -117,8 +110,7 @@ def main():
         print()
         print("[start_pc] all services started", flush=True)
         print("[start_pc] React: http://127.0.0.1:5173", flush=True)
-        print("[start_pc] Diagnostics API: http://127.0.0.1:5000", flush=True)
-        print("[start_pc] Control API: http://127.0.0.1:5100", flush=True)
+        print("[start_pc] PC Backend API: http://127.0.0.1:5000", flush=True)
         print("[start_pc] press Ctrl+C to stop all services", flush=True)
 
         while True:

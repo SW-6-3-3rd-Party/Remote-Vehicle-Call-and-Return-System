@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const STATUS_API_URL = "http://127.0.0.1:5100/vehicle/status";
+const STATUS_API_URL = "http://127.0.0.1:5000/vehicle/status";
 
 function VehicleListPage({
   onOpenAccidents,
