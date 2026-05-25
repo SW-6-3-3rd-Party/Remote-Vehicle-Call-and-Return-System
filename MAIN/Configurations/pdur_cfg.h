@@ -6,7 +6,7 @@
 /* 1. 수신 PDU ID 정의 (포트 번호나 CAN ID와 매핑될 고유 ID) */
 #define PDUR_UDP_CONTROL_ID     0x01
 #define PDUR_SOMEIP_ID          0x02
-#define PDUR_DOIP_MAIN_TCP_ID   0x03
+#define PDUR_DOIP_MAIN_TCP_ID   0x03 // 조각 모음이 끝난 UDS 진단 메시지
 #define PDUR_DOIP_ACT_TCP_ID    0x04
 #define PDUR_DOIP_BODY_TCP_ID   0x05
 
@@ -14,7 +14,7 @@
 #define PDUR_CAN_EVENT_ID       0x12  // 충격 감지 시
 #define PDUR_CAN_BODY_ID        0x13  // 바디 생존 신고
 
-#define PDUR_CAN_ACT_UDS_ID     0x17  // 조각 모음이 끝난 UDS 진단 메시지
+#define PDUR_CAN_ACT_UDS_ID     0x17  //pc로 전달할 uds메시지
 #define PDUR_CAN_BODY_UDS_ID    0x18
 #define PDUR_CAN_MAIN_UDS_ID    0x19
 

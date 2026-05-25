@@ -1,5 +1,5 @@
 /**********************************************************************************************************************
- * \file swc.h
+ * \file uds.h
  * \copyright Copyright (C) Infineon Technologies AG 2019
  * 
  * Use of this file is subject to the terms of use agreed between (i) you or the company in which ordinary course of 
@@ -25,13 +25,14 @@
  * IN THE SOFTWARE.
  *********************************************************************************************************************/
 
-#ifndef BSW_SERVICE_SWC_H_
-#define BSW_SERVICE_SWC_H_
+#ifndef BSW_SERVICE_UDS_H_
+#define BSW_SERVICE_UDS_H_
 
 /*********************************************************************************************************************/
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
 #include "Platform_Types.h"
+#include <stdint.h>
 /*********************************************************************************************************************/
 /*------------------------------------------------------Macros-------------------------------------------------------*/
 /*********************************************************************************************************************/
@@ -51,27 +52,7 @@
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
-void Callback_Diag_RoutingActivated(void);
-void Callback_Diag_RoutingDeactivated(void);
-void Callback_COM_SessionCnt(uint8_t *cnt);
-
-void SWC_Callback_PcCommloss(void);
-void SWC_Callback_ActCommloss(void);
-void SWC_Callback_BodyCommloss(void);
-void SWC_Callback_PcRecovered(void);
-void SWC_Callback_ActRecovered(void);
-void SWC_Callback_BodyRecovered(void);
-void SWC_Clear_All_DTC(void);
-
-uint8_t SWC_Get_ActEcu_CommStatus(void);
-uint8_t SWC_Get_BodyEcu_CommStatus(void);
-uint8_t SWC_Get_Pc_CommStatus(void);
-uint8_t SWC_Get_DtcStatus_ActEcu(void);
-uint8_t SWC_Get_DtcStatus_BodyEcu(void);
-uint8_t SWC_Get_DtcStatus_Pc(void);
+void Uds_ProcessRx(uint8_t* reqData, uint16_t reqLength);
 
 
-void Callback_COM_PcTimeout(void);
-//void SWC_Control_MainFunction(void);
-
-#endif /* BSW_SERVICE_SWC_H_ */
+#endif /* BSW_SERVICE_UDS_H_ */

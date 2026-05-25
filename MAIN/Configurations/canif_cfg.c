@@ -4,9 +4,6 @@
 #include "cantp.h"
 
 
-/* 상위 모듈 함수 */
-extern void CanTp_RxIndication(uint32_t canId, uint8_t* payload, uint8_t length); // CanTp 수신 함수
-
 /* PduR로 넘기기 위한 래퍼 함수 (시그니처 매칭 및 PDU ID 주입) */
 static void PduR_RouteRx_CanStatus(uint8_t* payload, uint8_t length) {
     PduR_RouteRx(PDUR_CAN_STATUS_ID, payload, length);

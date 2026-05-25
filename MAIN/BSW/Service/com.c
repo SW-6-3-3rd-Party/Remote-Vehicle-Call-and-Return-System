@@ -17,6 +17,10 @@
 /*------------------------------------------------------Macros-------------------------------------------------------*/
 /*********************************************************************************************************************/
 #define MAX_PAYLOAD 256
+
+#define UDP_TIMEOUT_THRESHOLD_MS 500  /* 500ms 통신 두절 시 타임아웃 */
+#define ACT_TIMEOUT_THRESHOLD_MS 500
+#define BODY_TIMEOUT_THRESHOLD_MS 500
 /*********************************************************************************************************************/
 /*-------------------------------------------------Global variables--------------------------------------------------*/
 /*********************************************************************************************************************/
@@ -81,11 +85,12 @@ static uint8_t COM_TxBuf_CtrBody_CAN[6];
 static uint8_t COM_TxBuf_Stat_UDP[3];
 
 
-#define UDP_TIMEOUT_THRESHOLD_MS 500  /* 500ms 통신 두절 시 타임아웃 */
+
+
 
 static uint32_t Last_Udp_RxTime = 0;
-static boolean  Is_Udp_Timeout = FALSE;
-static boolean  Is_First_Msg_Received = FALSE; /* 부팅 후 첫 메시지 수신 여부 */
+static uint32_t Last_Act_RxTime = 0;
+static uint32_t Last_Body_RxTime = 0;
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
@@ -108,8 +113,7 @@ void UDP_Ctr_ProcessRx(uint8_t* payload, uint16_t length)
     if(COM_Cur_Mode == MODE_DEFAULT) COM_Cur_Mode = MODE_REMOTE;
     /* 핵심: 정상 수신되었으므로 시간 갱신 및 타임아웃 플래그 해제 */
     Last_Udp_RxTime = Get_SystemTime_ms();
-    Is_Udp_Timeout = FALSE;
-    Is_First_Msg_Received = TRUE;
+    SWC_Callback_PcRecovered();
 }
 
 void SomeIp_ProcessRx(uint8_t* payload, uint16_t length)
@@ -124,11 +128,15 @@ void CAN_Stat_processRx(uint8_t* payload, uint16_t length)
     COM_RxBuf_CAN_Stat.gear           =   payload[2];
     COM_RxBuf_CAN_Stat.steer          =   payload[3];
     COM_RxBuf_CAN_Stat.steering_angle =   payload[4];
+    Last_Act_RxTime = Get_SystemTime_ms();
+    SWC_Callback_ActRecovered();
 }
 
 void CAN_Body_processRx(uint8_t* payload, uint16_t length)
 {
     COM_RxBuf_CAN_Body.alive_cnt = payload[0];
+    Last_Body_RxTime = Get_SystemTime_ms();
+    SWC_Callback_BodyRecovered();
 }
 
 uint8_t COM_Get_Ignition(void) { return COM_RxBuf_UDP_Ctr.ignition; }
@@ -201,21 +209,27 @@ void COM_Tx_MainFunction(void)
 
 void COM_TimeOut(void)
 {
-    /* 아직 부팅하고 PC에서 한 번도 제어 신호가 안 왔다면 감시하지 않음 */
-    if (Is_First_Msg_Received == FALSE) return;
+
+    if (COM_Cur_Mode != MODE_REMOTE)
+        return;
 
     uint32_t currentTime = Get_SystemTime_ms();
 
     /* 마지막 수신 시간과 현재 시간의 차이가 500ms 이상 벌어졌는지 확인 */
     if ((currentTime - Last_Udp_RxTime) >= UDP_TIMEOUT_THRESHOLD_MS)
     {
-        /* 이미 타임아웃 처리 중이 아니라면 (중복 호출 방지) */
-        if (Is_Udp_Timeout == FALSE)
-        {
-            Is_Udp_Timeout = TRUE; /* 타임아웃 상태로 진입 */
+        /* SWC로 "통신 끊겼다!" 라고 보고 (콜백 호출) */
+        Callback_COM_PcTimeout();
+        SWC_Callback_PcCommloss();
+    }
 
-            /* SWC로 "통신 끊겼다!" 라고 보고 (콜백 호출) */
-            Callback_COM_UdpTimeout();
-        }
+    if ((currentTime - Last_Act_RxTime) >= ACT_TIMEOUT_THRESHOLD_MS)
+    {
+        SWC_Callback_ActCommloss();
+    }
+
+    if ((currentTime - Last_Body_RxTime) >= BODY_TIMEOUT_THRESHOLD_MS)
+    {
+        SWC_Callback_BodyCommloss();
     }
 }

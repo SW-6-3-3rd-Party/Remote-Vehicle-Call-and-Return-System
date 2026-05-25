@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-#define TESTER_SOURCE_ADDRESS 0x0030
+#define TESTER_SOURCE_ADDRESS 0x0E00
 #define MY_TARGET_ADDRESS 0x0001
 
 
@@ -230,7 +230,7 @@ void DoIP_ProcessRx(uint8_t* payload, uint16_t length)
         // 2-A. 소스 주소(SA) 검증: 현재 소켓이 라우팅 활성화 단계에서 승인받은 SA와 일치하는가?
         if (DoIP_IsRegisteredSA(port, sourceAddr) == FALSE)
         {
-            DoIP_SendDiagNack(port, sourceAddr, targetAddr, 0x02); // Invalid source address
+            DoIP_SendDiagNack(port, targetAddr, sourceAddr, 0x02); // Invalid source address
             SoAd_CloseSocket(port);                                // [소켓 강제 종료]
             return;
         }
@@ -238,25 +238,25 @@ void DoIP_ProcessRx(uint8_t* payload, uint16_t length)
         // 2-B. 타겟 주소(TA) 검증: 우리가 아는 하위 네트워크(CAN)의 ECU 주소인가?
         if (DoIP_IsKnownTA(targetAddr) == FALSE)
         {
-            DoIP_SendDiagNack(port, sourceAddr, targetAddr, 0x03); // Unknown target address
+            DoIP_SendDiagNack(port, targetAddr, sourceAddr, 0x03); // Unknown target address
             return;
         }
 
         /* ----------------------------------------------------------------- */
         /* 라우팅 검증 성공! Positive ACK 전송 및 알맹이 추출하여 PduR 전달  */
         /* ----------------------------------------------------------------- */
-        DoIP_SendDiagAck(port, sourceAddr, targetAddr, 0x00); // Routing confirmation ACK
+        DoIP_SendDiagAck(port, targetAddr, sourceAddr, 0x00); // Routing confirmation ACK
 
         uint8_t* udsData = payload + 12;
         uint16_t udsLength = length - 12;
 
         /* TA에 따라 타겟 네트워크 PduR ID 분기 (이전 CanTp 로직과 동일한 원리) */
         if (targetAddr == 0x0001)
-            PduR_RouteRx(PDUR_CAN_MAIN_UDS_ID, udsData, udsLength);
+            PduR_RouteRx(PDUR_DOIP_MAIN_TCP_ID, udsData, udsLength);
         else if (targetAddr == 0x0010)
-            PduR_RouteRx(PDUR_CAN_ACT_UDS_ID, udsData, udsLength);
+            PduR_RouteRx(PDUR_DOIP_ACT_TCP_ID, udsData, udsLength);
         else if (targetAddr == 0x0020)
-            PduR_RouteRx(PDUR_CAN_BODY_UDS_ID, udsData, udsLength);
+            PduR_RouteRx(PDUR_DOIP_BODY_TCP_ID, udsData, udsLength);
     }
     else if (payloadType == 0x0005) /* 라우팅 활성화 요청 (Routing Activation) */
     {
@@ -307,6 +307,6 @@ void DoIP_ProcessTx(uint16_t sourceAddr, uint8_t* udsData, uint16_t udsLength)
     /* 3. UDS 알맹이 복사 */
     memcpy(&txBuf[12], udsData, udsLength);
 
-    /* 4. 완성된 패킷을 SoAd로 전달하여 TCP 송신 (포트는 13401 고정) */
-    SoAd_IfTransmit(13401, txBuf, totalTcpLength);
+    /* 4. 완성된 패킷을 SoAd로 전달하여 TCP 송신 (포트는 13400 고정) */
+    SoAd_IfTransmit(13400, txBuf, totalTcpLength);
 }

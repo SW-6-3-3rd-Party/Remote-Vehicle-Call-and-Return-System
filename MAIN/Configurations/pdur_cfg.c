@@ -4,15 +4,15 @@
 #include "cantp.h"
 #include "soad.h"
 #include "doip.h"
+#include "uds.h"
 
 #include <stdint.h>
 
-// 상위 계층 함수들 (원래는 헤더파일 인클루드 필요)
+
 static void UDS_TCP_Main_ProcessRx(uint8_t* payload, uint16_t length)
 {
-    Can_Send(0x300, payload, length);
+    Uds_ProcessRx(payload, length);
 }
-
 
 static void UDS_TCP_Act_ProcessRx(uint8_t* payload, uint16_t length)
 {

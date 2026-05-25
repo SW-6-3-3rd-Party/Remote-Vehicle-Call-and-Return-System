@@ -48,6 +48,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *newpcb, err_t err) {
 
     tcp_active_pcb = newpcb;
 
+
     /* 필수 콜백만 등록 (sent, poll 콜백 생략 가능) */
     tcp_recv(newpcb, tcp_server_recv);
     tcp_err(newpcb, tcp_server_error);

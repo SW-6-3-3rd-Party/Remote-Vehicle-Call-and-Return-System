@@ -13,6 +13,79 @@ static uint32_t Last_E2e_ChangeTime = 0; /* 바디 카운터가 마지막으로 
 static uint8_t  Last_Body_AliveCnt = 0;  /* 직전 주기의 바디 카운터 값 */
 static boolean  Is_Body_Anomalous = FALSE; /* 바디 상태 이상 플래그 */
 
+
+/* 실시간 통신 상태 (0: 정상, 1: 두절) -> 통신 복구 시 0으로 돌아감 */
+static uint8_t CommStatus_Act  = 0;
+static uint8_t CommStatus_Body = 0;
+static uint8_t CommStatus_Pc   = 0;
+
+/* 고장 코드 발생 기록 (0: 미발생, 1: 발생함) -> UDS 0x14로만 초기화됨 */
+static uint8_t DtcRecord_Act  = 0;
+static uint8_t DtcRecord_Body = 0;
+static uint8_t DtcRecord_Pc   = 0;
+
+/**
+ * @brief 통신 두절 시 COM 계층에서 호출하는 콜백
+ */
+void SWC_Callback_PcCommloss(void)
+{
+    CommStatus_Pc = 1; /* 현재 통신 끊김 상태! */
+    DtcRecord_Pc  = 1; /* 고장 이력에 '발생'으로 도장 쾅 찍음 (Latching) */
+}
+
+void SWC_Callback_ActCommloss(void)
+{
+    CommStatus_Act = 1; /* 현재 통신 끊김 상태! */
+    DtcRecord_Act  = 1; /* 고장 이력에 '발생'으로 도장 쾅 찍음 (Latching) */
+}
+
+
+void SWC_Callback_BodyCommloss(void)
+{
+    CommStatus_Body = 1; /* 현재 통신 끊김 상태! */
+    DtcRecord_Body  = 1; /* 고장 이력에 '발생'으로 도장 쾅 찍음 (Latching) */
+}
+
+/**
+ * @brief 통신이 다시 복구되었을 때 COM 수신부에서 호출
+ */
+void SWC_Callback_PcRecovered(void)
+{
+    CommStatus_Pc = 0; /* 현재 통신은 다시 정상으로 돌아옴 */
+}
+
+void SWC_Callback_ActRecovered(void)
+{
+    CommStatus_Act = 0; /* 현재 통신은 다시 정상으로 돌아옴 */
+}
+
+void SWC_Callback_BodyRecovered(void)
+{
+    CommStatus_Body = 0; /* 현재 통신은 다시 정상으로 돌아옴 */
+}
+
+void SWC_Clear_All_DTC(void)
+{
+    DtcRecord_Act  = 0;
+    DtcRecord_Body = 0;
+    DtcRecord_Pc   = 0;
+
+    /* 통신이 아직도 끊겨있는 상태인데 강제로 지우면 안 되므로,
+       CommStatus가 0(정상)일 때만 지워지도록 방어 로직을 넣어도 됨.
+    */
+}
+
+/* --- 1. UDS 0x22 (데이터 읽기) 용 인터페이스 --- */
+uint8_t SWC_Get_ActEcu_CommStatus(void)  { return CommStatus_Act; }
+uint8_t SWC_Get_BodyEcu_CommStatus(void) { return CommStatus_Body; }
+uint8_t SWC_Get_Pc_CommStatus(void)      { return CommStatus_Pc; }
+
+/* --- 2. UDS 0x19 (고장 코드 확인) 용 인터페이스 --- */
+uint8_t SWC_Get_DtcStatus_ActEcu(void)  { return DtcRecord_Act; }
+uint8_t SWC_Get_DtcStatus_BodyEcu(void) { return DtcRecord_Body; }
+uint8_t SWC_Get_DtcStatus_Pc(void)      { return DtcRecord_Pc; }
+
+
 /**
  * @brief DoIP 진단 라우팅 활성화 시 호출될 콜백 함수
  */
@@ -40,7 +113,7 @@ void Callback_Diag_RoutingDeactivated(void)
 
 void Callback_COM_SessionCnt(uint8_t *cnt) { cnt++;}
 
-void Callback_COM_UdpTimeout(void)
+void Callback_COM_PcTimeout(void)
 {
     if(COM_Get_Ignition() == IGNITIONON)
     {
