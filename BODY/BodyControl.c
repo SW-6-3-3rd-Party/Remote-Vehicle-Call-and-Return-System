@@ -61,8 +61,9 @@
 #define BODY_ULTRASONIC_MEASURE_PERIOD_MS     (60U)
 #define BODY_ULTRASONIC_VALID_HOLD_MS         (300U)
 #define BODY_ULTRASONIC_ECHO_TIMEOUT_US       (3000U)
+#define BODY_ULTRASONIC_DIAG_ECHO_TIMEOUT_US  (50000U)
 #define BODY_ULTRASONIC_ECHO_IDLE_TIMEOUT_US  (300U)
-#define BODY_ULTRASONIC_NO_OBJECT_CM          (255U)
+#define BODY_ULTRASONIC_NO_OBJECT_CM          (400U)
 
 /* =========================
  * RGB Headlamp Pins
@@ -430,7 +431,8 @@ static boolean BodyControl_WaitUltrasonicEchoState(boolean targetHigh,
     return FALSE;
 }
 
-static boolean BodyControl_MeasureUltrasonicDistanceCm(uint16* distanceCm)
+static boolean BodyControl_MeasureUltrasonicDistanceCmWithTimeout(uint16* distanceCm,
+                                                                  uint32 echoTimeoutUs)
 {
     uint32 pulseStartTicks;
     uint32 pulseTicks;
@@ -452,13 +454,13 @@ static boolean BodyControl_MeasureUltrasonicDistanceCm(uint16* distanceCm)
     BodyControl_WriteUltrasonicTrig(FALSE);
 
     if (BodyControl_WaitUltrasonicEchoState(TRUE,
-                                            BODY_ULTRASONIC_ECHO_TIMEOUT_US) == FALSE)
+                                            echoTimeoutUs) == FALSE)
     {
         return FALSE;
     }
 
     pulseStartTicks = BodyControl_GetStmTicks();
-    timeoutTicks = BodyControl_GetTicksFromUs(BODY_ULTRASONIC_ECHO_TIMEOUT_US);
+    timeoutTicks = BodyControl_GetTicksFromUs(echoTimeoutUs);
 
     while (BodyControl_ReadUltrasonicEchoHigh() != FALSE)
     {
@@ -480,6 +482,12 @@ static boolean BodyControl_MeasureUltrasonicDistanceCm(uint16* distanceCm)
 
     *distanceCm = (uint16)distance;
     return TRUE;
+}
+
+static boolean BodyControl_MeasureUltrasonicDistanceCm(uint16* distanceCm)
+{
+    return BodyControl_MeasureUltrasonicDistanceCmWithTimeout(distanceCm,
+                                                              BODY_ULTRASONIC_ECHO_TIMEOUT_US);
 }
 
 static uint8 BodyControl_ComputeCollisionWarningLevel(uint16 distanceCm,
@@ -1818,6 +1826,7 @@ void BodyControl_RunBuzzerDiagnosticRoutine(void)
 
 void BodyControl_RunLedDiagnosticRoutine(void)
 {
+    BodyControl_WriteHeadlamp(TRUE);
     BodyControl_WriteBrakePin(TRUE);
     BodyControl_WriteNormalLedPin(BODY_LEFT_TURN_PORT,
                                   BODY_LEFT_TURN_PIN,
@@ -1828,6 +1837,7 @@ void BodyControl_RunLedDiagnosticRoutine(void)
 
     BodyControl_DelayMs(1000U);
 
+    BodyControl_WriteHeadlamp(FALSE);
     BodyControl_WriteBrakePin(FALSE);
     BodyControl_WriteNormalLedPin(BODY_LEFT_TURN_PORT,
                                   BODY_LEFT_TURN_PIN,
@@ -1849,7 +1859,8 @@ boolean BodyControl_RunUltrasonicDiagnosticRoutine(uint16* distanceMm)
         return FALSE;
     }
 
-    if (BodyControl_MeasureUltrasonicDistanceCm(&distanceCm) == FALSE)
+    if (BodyControl_MeasureUltrasonicDistanceCmWithTimeout(&distanceCm,
+                                                           BODY_ULTRASONIC_DIAG_ECHO_TIMEOUT_US) == FALSE)
     {
         g_diagFaultMask |= BODY_DIAG_ULTRASONIC_BIT;
         g_ultrasonicDistanceCm = BODY_ULTRASONIC_NO_OBJECT_CM;

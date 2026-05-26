@@ -23,15 +23,15 @@
 /*
  * 서보에 실제로 허용할 절대 펄스 범위.
  */
-#define SERVO_MIN_US      (950U)
-#define SERVO_MAX_US      (1400U)
+#define SERVO_MIN_US      (900U)
+#define SERVO_MAX_US      (1500U)
 
 /*
  * 조향 최대각/중앙값.
  */
-#define STEERING_LEFT_US      (1400U)
+#define STEERING_LEFT_US      (900U)
 #define STEERING_MIDDLE_US    (1200U)
-#define STEERING_RIGHT_US     (950U)
+#define STEERING_RIGHT_US     (1500U)
 
 /*
  * Steering command mode.

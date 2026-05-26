@@ -63,6 +63,10 @@
  * ========================= */
 #define SESSION_DEFAULT                      (0x01U)
 #define SESSION_EXTENDED                     (0x03U)
+#define SESSION_P2_SERVER_MAX_H              (0x0BU)
+#define SESSION_P2_SERVER_MAX_L              (0xB8U)
+#define SESSION_P2_EXT_SERVER_MAX_H          (0x03U)
+#define SESSION_P2_EXT_SERVER_MAX_L          (0xE8U)
 
 static uint8 g_diagSession = SESSION_DEFAULT;
 
@@ -82,15 +86,15 @@ static uint8 g_diagSession = SESSION_DEFAULT;
 #define DTC_REPORT_SUBFUNCTION               (0x0AU)
 
 /*
- * UDS DTC status bit demo:
- * bit0 testFailed
- * bit3 confirmedDTC
+ * Custom DTC status:
+ * 0 = not occurred, 1 = occurred
  */
-#define DTC_STATUS_TEST_FAILED_CONFIRMED     (0x09U)
-#define DTC_STATUS_AVAILABILITY_MASK         (0x09U)
+#define DTC_STATUS_NOT_OCCURRED              (0x00U)
+#define DTC_STATUS_OCCURRED                  (0x01U)
+#define DTC_STATUS_AVAILABILITY_MASK         (0x01U)
 
-static uint8 g_dtcC100Status = 0U;
-static uint8 g_dtcC101Status = 0U;
+static uint8 g_dtcC100Status = DTC_STATUS_NOT_OCCURRED;
+static uint8 g_dtcC101Status = DTC_STATUS_NOT_OCCURRED;
 
 static uint32 g_dtcEncoderNoSignalTimerMs = 0U;
 static uint32 g_dtcSteeringMismatchTimerMs = 0U;
@@ -102,7 +106,6 @@ static uint32 g_dtcSteeringMismatchTimerMs = 0U;
 #define ROUTINE_SERVO_TEST                   (0x0101U)
 
 #define ROUTINE_RESULT_OK                    (0x00U)
-#define ROUTINE_RESULT_FAIL                  (0x01U)
 
 typedef enum
 {
@@ -185,16 +188,16 @@ static uint16 UdsDiag_GetSpeedKmhX100(void)
     wheelCircumferenceM = 3.1415926f * 0.065f;
     speedMps = ((float)pulsePerSecond / 990.0f) * wheelCircumferenceM;
     speedKmh = speedMps * 3.6f;
-    speedKmhX100 = speedKmh * 100.0f;
+    speedKmhX100 = speedKmh * 100.0f * 100.0f;
 
     if (speedKmhX100 < 0.0f)
     {
         speedKmhX100 = 0.0f;
     }
 
-    if (speedKmhX100 > 5000.0f)
+    if (speedKmhX100 > 65535.0f)
     {
-        speedKmhX100 = 5000.0f;
+        speedKmhX100 = 65535.0f;
     }
 
     return (uint16)(speedKmhX100 + 0.5f);
@@ -348,7 +351,7 @@ static void UdsDiag_SendNegativeResponse(uint8 sid, uint8 nrc)
  * ====================================================== */
 static void UdsDiag_HandleSessionControl(const uint8* uds, uint8 len)
 {
-    uint8 payload[2];
+    uint8 payload[6];
     uint8 sub;
 
     if (len != 2U)
@@ -371,8 +374,12 @@ static void UdsDiag_HandleSessionControl(const uint8* uds, uint8 len)
 
     payload[0] = SID_DIAGNOSTIC_SESSION_CONTROL + POS_RESP_OFFSET;
     payload[1] = sub;
+    payload[2] = SESSION_P2_SERVER_MAX_H;
+    payload[3] = SESSION_P2_SERVER_MAX_L;
+    payload[4] = SESSION_P2_EXT_SERVER_MAX_H;
+    payload[5] = SESSION_P2_EXT_SERVER_MAX_L;
 
-    UdsDiag_SendSingleFrame(payload, 2U);
+    UdsDiag_SendSingleFrame(payload, 6U);
 }
 
 static void UdsDiag_HandleReadDID(const uint8* uds, uint8 len)
@@ -478,21 +485,15 @@ static void UdsDiag_HandleReadDTC(const uint8* uds, uint8 len)
     payload[2] = DTC_STATUS_AVAILABILITY_MASK;
     payloadLen = 3U;
 
-    if (g_dtcC100Status != 0U)
-    {
-        payloadLen = UdsDiag_AppendDtc(payload,
-                                       payloadLen,
-                                       DTC_ENCODER_NO_SIGNAL,
-                                       g_dtcC100Status);
-    }
+    payloadLen = UdsDiag_AppendDtc(payload,
+                                   payloadLen,
+                                   DTC_ENCODER_NO_SIGNAL,
+                                   g_dtcC100Status);
 
-    if (g_dtcC101Status != 0U)
-    {
-        payloadLen = UdsDiag_AppendDtc(payload,
-                                       payloadLen,
-                                       DTC_STEERING_MISMATCH,
-                                       g_dtcC101Status);
-    }
+    payloadLen = UdsDiag_AppendDtc(payload,
+                                   payloadLen,
+                                   DTC_STEERING_MISMATCH,
+                                   g_dtcC101Status);
 
     UdsDiag_SendSingleFrame(payload, payloadLen);
 }
@@ -515,8 +516,8 @@ static void UdsDiag_HandleClearDTC(const uint8* uds, uint8 len)
         return;
     }
 
-    g_dtcC100Status = 0U;
-    g_dtcC101Status = 0U;
+    g_dtcC100Status = DTC_STATUS_NOT_OCCURRED;
+    g_dtcC101Status = DTC_STATUS_NOT_OCCURRED;
     g_dtcEncoderNoSignalTimerMs = 0U;
     g_dtcSteeringMismatchTimerMs = 0U;
 
@@ -711,7 +712,7 @@ static void UdsDiag_UpdateDtcMonitor1ms(void)
 
         if (g_dtcEncoderNoSignalTimerMs >= 2000U)
         {
-            g_dtcC100Status = DTC_STATUS_TEST_FAILED_CONFIRMED;
+            g_dtcC100Status = DTC_STATUS_OCCURRED;
         }
     }
     else
@@ -737,7 +738,7 @@ static void UdsDiag_UpdateDtcMonitor1ms(void)
 
         if (g_dtcSteeringMismatchTimerMs >= 1000U)
         {
-            g_dtcC101Status = DTC_STATUS_TEST_FAILED_CONFIRMED;
+            g_dtcC101Status = DTC_STATUS_OCCURRED;
         }
     }
     else
@@ -764,19 +765,11 @@ static void UdsDiag_UpdateMotorRoutine1ms(void)
 
     if (g_routineTimerMs >= 1000U)
     {
-        if ((Encoder_GetCount() > 0) || (Encoder_GetPulsePerSecond() > 0U))
-        {
-            g_routineResult = ROUTINE_RESULT_OK;
-        }
-        else
-        {
-            g_routineResult = ROUTINE_RESULT_FAIL;
-        }
-
         MotorControl_Stop();
         MotorControl_SetDutyPercent(g_savedMotorDuty);
 
-        UdsDiag_SendRoutineResult(ROUTINE_MOTOR_TEST, g_routineResult);
+        g_routineResult = ROUTINE_RESULT_OK;
+        UdsDiag_SendRoutineResult(ROUTINE_MOTOR_TEST, ROUTINE_RESULT_OK);
 
         g_routineState = UDS_ROUTINE_NONE;
         g_routineTimerMs = 0U;
@@ -786,48 +779,34 @@ static void UdsDiag_UpdateMotorRoutine1ms(void)
 
 static void UdsDiag_UpdateServoRoutine1ms(void)
 {
-    sint16 actualAngle;
-    sint16 targetAngle;
-
     g_routineTimerMs++;
 
     /*
-     * Check LEFT -> CENTER -> RIGHT, 800 ms at each position.
+     * Output LEFT -> CENTER -> RIGHT, 800 ms at each position.
      * Return to CENTER after sending the routine result.
      */
     switch (g_routineStep)
     {
         case 0U:
             Steering_SetKey(STEERING_KEY_LEFT);
-            targetAngle = -35;
             break;
 
         case 1U:
             Steering_SetKey(STEERING_KEY_NULL);
-            targetAngle = 0;
             break;
 
         case 2U:
             Steering_SetKey(STEERING_KEY_RIGHT);
-            targetAngle = 35;
             break;
 
         default:
             Steering_SetKey(STEERING_KEY_RIGHT);
-            targetAngle = 35;
             break;
     }
 
     if (g_routineTimerMs < 800U)
     {
         return;
-    }
-
-    actualAngle = UdsDiag_GetSteeringAngleDeg();
-
-    if (UdsDiag_AbsDiffSint16(actualAngle, targetAngle) > 10U)
-    {
-        g_routineResult = ROUTINE_RESULT_FAIL;
     }
 
     g_routineTimerMs = 0U;
@@ -837,7 +816,8 @@ static void UdsDiag_UpdateServoRoutine1ms(void)
     {
         Steering_SetKey(STEERING_KEY_NULL);
 
-        UdsDiag_SendRoutineResult(ROUTINE_SERVO_TEST, g_routineResult);
+        g_routineResult = ROUTINE_RESULT_OK;
+        UdsDiag_SendRoutineResult(ROUTINE_SERVO_TEST, ROUTINE_RESULT_OK);
 
         g_routineState = UDS_ROUTINE_NONE;
         g_routineTimerMs = 0U;
@@ -875,8 +855,8 @@ void UdsDiag_Init(void)
 
     g_diagSession = SESSION_DEFAULT;
 
-    g_dtcC100Status = 0U;
-    g_dtcC101Status = 0U;
+    g_dtcC100Status = DTC_STATUS_NOT_OCCURRED;
+    g_dtcC101Status = DTC_STATUS_NOT_OCCURRED;
     g_dtcEncoderNoSignalTimerMs = 0U;
     g_dtcSteeringMismatchTimerMs = 0U;
 

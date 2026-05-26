@@ -61,10 +61,10 @@
 
 /*
  * Default straight drive speed.
- * Channel A is treated as left wheel, channel B as right wheel.
+ * Channel B is treated as left wheel, channel A as right wheel.
  */
 #define MOTOR_DEFAULT_DUTY_PERCENT    (90U)
-#define MOTOR_LEFT_IS_CHANNEL_A       (1U)
+#define MOTOR_LEFT_IS_CHANNEL_A       (0U)
 
 /*
  * 방향 보정

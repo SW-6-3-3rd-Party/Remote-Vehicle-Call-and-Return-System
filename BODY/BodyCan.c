@@ -33,7 +33,7 @@
  */
 
 #define BODY_CAN_BAUDRATE                    (500000U)
-#define BODY_CAN_FD_DATA_BAUDRATE            (500000U)
+#define BODY_CAN_FD_DATA_BAUDRATE            (2000000U)
 #define BODY_CAN_FRAME_MODE                  IfxCan_FrameMode_fdLong
 #define BODY_CAN_ISR_PRIORITY_RX             (10U)
 
@@ -71,6 +71,11 @@
 #define BODY_UDS_ROUTINE_START                (0x01U)
 #define BODY_UDS_ROUTINE_RESULT_OK            (0x00U)
 #define BODY_UDS_ROUTINE_RESULT_TIMEOUT       (0x01U)
+
+#define BODY_UDS_P2_SERVER_MAX_HIGH           (0x0BU)
+#define BODY_UDS_P2_SERVER_MAX_LOW            (0xB8U)
+#define BODY_UDS_P2_EXT_SERVER_MAX_HIGH       (0x03U)
+#define BODY_UDS_P2_EXT_SERVER_MAX_LOW        (0xE8U)
 
 IFX_CONST IfxCan_Can_Pins g_bodyCanPins =
 {
@@ -412,8 +417,12 @@ static void BodyCan_HandleUdsSessionControl(const uint8 payload[BODY_UDS_SF_MAX_
 
     response[0] = BODY_UDS_SID_SESSION_CONTROL + BODY_UDS_POSITIVE_RESPONSE_OFFSET;
     response[1] = requestedSession;
+    response[2] = BODY_UDS_P2_SERVER_MAX_HIGH;
+    response[3] = BODY_UDS_P2_SERVER_MAX_LOW;
+    response[4] = BODY_UDS_P2_EXT_SERVER_MAX_HIGH;
+    response[5] = BODY_UDS_P2_EXT_SERVER_MAX_LOW;
 
-    BodyCan_SendUdsPositiveResponse(response, 2U);
+    BodyCan_SendUdsPositiveResponse(response, 6U);
 }
 
 static void BodyCan_HandleUdsReadDid(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD_BYTES],
@@ -423,7 +432,6 @@ static void BodyCan_HandleUdsReadDid(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
     uint8 index;
     uint16 did;
     uint16 distanceMm;
-    uint32 distance;
 
     if (payloadLength != 3U)
     {
@@ -456,21 +464,7 @@ static void BodyCan_HandleUdsReadDid(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
 
     if (did == BODY_UDS_DID_ULTRASONIC_DISTANCE)
     {
-        if (BodyControl_IsUltrasonicDistanceValid() != FALSE)
-        {
-            distance = ((uint32)BodyControl_GetUltrasonicDistanceCm()) * 10U;
-
-            if (distance > 0xFFFFU)
-            {
-                distance = 0xFFFFU;
-            }
-
-            distanceMm = (uint16)distance;
-        }
-        else
-        {
-            distanceMm = 0xFFFFU;
-        }
+        (void)BodyControl_RunUltrasonicDiagnosticRoutine(&distanceMm);
 
         response[3] = (uint8)((distanceMm >> 8U) & 0xFFU);
         response[4] = (uint8)(distanceMm & 0xFFU);
@@ -512,7 +506,8 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
 {
     uint8 response[BODY_UDS_SF_MAX_PAYLOAD_BYTES];
     uint8 index;
-    uint8 faultMask;
+    uint16 distanceMm;
+    boolean ultrasonicOk;
 
     if (payloadLength != 2U)
     {
@@ -528,7 +523,7 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
         return;
     }
 
-    faultMask = BodyControl_GetDiagFaultMask();
+    ultrasonicOk = BodyControl_RunUltrasonicDiagnosticRoutine(&distanceMm);
 
     for (index = 0U; index < BODY_UDS_SF_MAX_PAYLOAD_BYTES; index++)
     {
@@ -538,19 +533,20 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
     response[0] = BODY_UDS_SID_READ_DTC + BODY_UDS_POSITIVE_RESPONSE_OFFSET;
     response[1] = BODY_UDS_READ_DTC_ALL_SUBFUNCTION;
     response[2] = BODY_UDS_DTC_STATUS_AVAILABILITY_MASK;
+    response[3] = BODY_UDS_DTC_ULTRASONIC_BYTE0;
+    response[4] = BODY_UDS_DTC_ULTRASONIC_BYTE1;
+    response[5] = BODY_UDS_DTC_ULTRASONIC_BYTE2;
 
-    if ((faultMask & BODY_DIAG_ULTRASONIC_BIT) != 0U)
+    if (ultrasonicOk == FALSE)
     {
-        response[3] = BODY_UDS_DTC_ULTRASONIC_BYTE0;
-        response[4] = BODY_UDS_DTC_ULTRASONIC_BYTE1;
-        response[5] = BODY_UDS_DTC_ULTRASONIC_BYTE2;
         response[6] = BODY_UDS_DTC_STATUS_TEST_FAILED;
-
-        BodyCan_SendUdsPositiveResponse(response, 7U);
-        return;
+    }
+    else
+    {
+        response[6] = 0U;
     }
 
-    BodyCan_SendUdsPositiveResponse(response, 3U);
+    BodyCan_SendUdsPositiveResponse(response, 7U);
 }
 
 static void BodyCan_HandleUdsClearDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD_BYTES],
