@@ -312,21 +312,26 @@ function DiagnosticPage({ onBack }) {
       pushLog(`DoIP 진단을 시작합니다. API=${API_BASE_URL}`);
       pushLog("Media Pi 직접 DoIP 조회를 먼저 수행합니다.");
 
-      const mediaResponse = await fetch(`${API_BASE_URL}/diagnostics/media`);
-      const mediaData = await mediaResponse.json();
+      try {
+        const mediaResponse = await fetch(`${API_BASE_URL}/diagnostics/media`);
+        const mediaData = await mediaResponse.json();
 
-      if (!mediaResponse.ok || mediaData.result === "ERROR") {
-        throw new Error(mediaData.detail || `Media HTTP ${mediaResponse.status}`);
+        if (!mediaResponse.ok || mediaData.result === "ERROR") {
+          throw new Error(mediaData.detail || `Media HTTP ${mediaResponse.status}`);
+        }
+
+        const mediaCard = buildMediaCard(mediaData);
+        setEcus((current) => mergeEcuById(current, mediaCard));
+        setDtcs((current) => [
+          ...current.filter((dtc) => dtc.ecu !== "MEDIA PI"),
+          ...buildDtcRows([mediaCard]),
+        ]);
+        setLastUpdatedAt(new Date());
+        pushLog("Media Pi DID 조회가 완료되었습니다.");
+      } catch (error) {
+        pushLog(`Media Pi DID 조회 실패: ${error.message}`);
       }
 
-      const mediaCard = buildMediaCard(mediaData);
-      setEcus((current) => mergeEcuById(current, mediaCard));
-      setDtcs((current) => [
-        ...current.filter((dtc) => dtc.ecu !== "MEDIA PI"),
-        ...buildDtcRows([mediaCard]),
-      ]);
-      setLastUpdatedAt(new Date());
-      pushLog("Media Pi DID 조회가 완료되었습니다.");
       pushLog("MAIN/ACT/BODY 포함 전체 진단을 이어서 수행합니다.");
 
       const response = await fetch(`${API_BASE_URL}/diagnostics/run`);
