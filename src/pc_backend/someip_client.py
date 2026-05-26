@@ -16,18 +16,21 @@ VEHICLE_ID = 1
 MAIN_ECU_IP = "192.168.10.2"
 MEDIA_PI_IP = "192.168.20.2"
 
-COLLISION_WARNING_SERVICE_ID = 0x2000
+MAIN_BUZZER_SERVICE_ID = 0x2001
 ACCIDENT_HISTORY_SERVICE_ID = 0x1001
 INSTANCE_ID = 0x0001
 
-SET_WARNING_LIGHT_METHOD_ID = 0x0001
-GET_WARNING_LIGHT_METHOD_ID = 0x0002
+MAIN_BUZZER_CONTROL_METHOD_ID = 0x0001
 GET_ACCIDENT_LIST_METHOD_ID = 0x0001
+
+MAIN_SOMEIP_MINOR_VERSION = 0x00000001
+MEDIA_SOMEIP_MINOR_VERSION = 0x00000000
 
 SOMEIP_SD_MULTICAST_IP = "224.224.224.245"
 SOMEIP_SD_PORT = 30490
 
 _daemon_proc = None
+_last_warning_light_state = 0
 
 
 class SomeIpError(Exception):
@@ -104,7 +107,7 @@ def _ensure_someipyd_running():
         raise SomeIpError(f"someipyd exited early with code {_daemon_proc.returncode}")
 
 
-def _build_service(service_id, method_id):
+def _build_service(service_id, method_id, minor_version=MEDIA_SOMEIP_MINOR_VERSION):
     try:
         from someipy import Method, ServiceBuilder, TransportLayerProtocol
     except ImportError as exc:
@@ -118,6 +121,7 @@ def _build_service(service_id, method_id):
         ServiceBuilder()
         .with_service_id(service_id)
         .with_major_version(1)
+        .with_minor_version(minor_version)
         .with_method(method)
         .build()
     )
@@ -129,15 +133,42 @@ class SomeIpClient:
         self.timeout = timeout
 
     def call(self, service_id, method_id, payload):
+        return self.call_json(service_id, method_id, payload)
+
+    def call_json(self, service_id, method_id, payload, minor_version=MEDIA_SOMEIP_MINOR_VERSION):
         payload_bytes = b"" if payload is None else json.dumps(payload).encode("utf-8")
+        response_payload = self.call_raw(
+            service_id=service_id,
+            method_id=method_id,
+            payload_bytes=payload_bytes,
+            minor_version=minor_version,
+        )
+
+        if not response_payload:
+            return {}
+        return json.loads(response_payload.decode("utf-8"))
+
+    def call_raw(
+        self,
+        service_id,
+        method_id,
+        payload_bytes=b"",
+        minor_version=MEDIA_SOMEIP_MINOR_VERSION,
+    ):
+        if payload_bytes is None:
+            payload_bytes = b""
+        payload_bytes = bytes(payload_bytes)
+
         try:
-            return asyncio.run(self._call_async(service_id, method_id, payload_bytes))
+            return asyncio.run(
+                self._call_async(service_id, method_id, payload_bytes, minor_version)
+            )
         except SomeIpError:
             raise
         except Exception as exc:
             raise SomeIpError(str(exc)) from exc
 
-    async def _call_async(self, service_id, method_id, payload_bytes):
+    async def _call_async(self, service_id, method_id, payload_bytes, minor_version):
         try:
             from someipy import (
                 ClientServiceInstance,
@@ -155,7 +186,7 @@ class SomeIpClient:
 
         daemon = await connect_to_someipy_daemon()
         try:
-            service = _build_service(service_id, method_id)
+            service = _build_service(service_id, method_id, minor_version)
             instance = ClientServiceInstance(
                 daemon=daemon,
                 service=service,
@@ -176,9 +207,7 @@ class SomeIpClient:
             if result.return_code != ReturnCode.E_OK:
                 raise SomeIpError(f"SOME/IP return code error: {result.return_code}")
 
-            if not result.payload:
-                return {}
-            return json.loads(result.payload.decode("utf-8"))
+            return bytes(result.payload or b"")
         finally:
             await daemon.disconnect_from_daemon()
 
@@ -206,23 +235,42 @@ someip_client = SomeIpClient()
 
 
 def set_warning_light(enable):
-    return someip_client.call(
-        service_id=COLLISION_WARNING_SERVICE_ID,
-        method_id=SET_WARNING_LIGHT_METHOD_ID,
-        payload={"enable": 1 if enable else 0},
+    global _last_warning_light_state
+
+    state = 1 if enable else 0
+    response = someip_client.call_raw(
+        service_id=MAIN_BUZZER_SERVICE_ID,
+        method_id=MAIN_BUZZER_CONTROL_METHOD_ID,
+        payload_bytes=bytes([VEHICLE_ID & 0xFF, state]),
+        minor_version=MAIN_SOMEIP_MINOR_VERSION,
     )
+
+    if len(response) < 2:
+        raise SomeIpError(
+            "MAIN SOME/IP response is too short: "
+            f"{response.hex(' ').upper() or '<empty>'}"
+        )
+
+    _last_warning_light_state = int(response[1])
+    return {
+        "result": "OK",
+        "vehicle_id": int(response[0]),
+        "state": _last_warning_light_state,
+        "raw": response.hex(" ").upper(),
+    }
 
 
 def get_warning_light():
-    return someip_client.call(
-        service_id=COLLISION_WARNING_SERVICE_ID,
-        method_id=GET_WARNING_LIGHT_METHOD_ID,
-        payload={},
-    )
+    return {
+        "result": "OK",
+        "state": _last_warning_light_state,
+        "source": "pc_cache",
+        "message": "MAIN SOME/IP service implements control method only.",
+    }
 
 
 def get_accident_list():
-    return someip_client.call(
+    return someip_client.call_json(
         service_id=ACCIDENT_HISTORY_SERVICE_ID,
         method_id=GET_ACCIDENT_LIST_METHOD_ID,
         payload={"vehicle_id": VEHICLE_ID},

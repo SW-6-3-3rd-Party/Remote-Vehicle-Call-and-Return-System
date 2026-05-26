@@ -31,6 +31,7 @@ function RemoteControlPage({ onBack }) {
   const [hazardOn, setHazardOn] = useState(false);
   const [ignitionOn, setIgnitionOn] = useState(false);
   const [warningLightOn, setWarningLightOn] = useState(false);
+  const [warningLightPending, setWarningLightPending] = useState(false);
   const [hornOn, setHornOn] = useState(false);
   const [latestEventName, setLatestEventName] = useState("");
 
@@ -291,36 +292,46 @@ const handleBack = () => {
     sendControlCommand("horn", "OFF");
   };
 
-const handleWarningLightClick = async () => {
-  const next = !warningLightOn;
-  const nextState = next ? 1 : 0;
+  const handleWarningLightClick = async () => {
+    if (warningLightPending) return;
 
-  try {
-    const response = await fetch(WARNING_LIGHT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        enable: nextState,
-      }),
-    });
+    const previous = warningLightOn;
+    const next = !warningLightOn;
+    const nextState = next ? 1 : 0;
 
-    const data = await response.json();
+    setWarningLightOn(next);
+    setWarningLightPending(true);
 
-    const resultText = String(data.result || "").toUpperCase();
+    try {
+      const response = await fetch(WARNING_LIGHT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          enable: nextState,
+        }),
+      });
 
-    if (resultText !== "OK") {
-      alert(data.message || data.detail || "제어 명령 오류");
-      return;
+      const data = await response.json();
+
+      const resultText = String(data.result || "").toUpperCase();
+
+      if (resultText !== "OK") {
+        setWarningLightOn(previous);
+        alert(data.message || data.detail || "제어 명령 오류");
+        return;
+      }
+
+      setWarningLightOn(data.state === 1);
+    } catch (error) {
+      setWarningLightOn(previous);
+      console.error("충돌방지 경고등 제어 실패:", error);
+      alert("PC backend 서버에 연결할 수 없습니다.");
+    } finally {
+      setWarningLightPending(false);
     }
-
-    setWarningLightOn(data.state === 1);
-  } catch (error) {
-    console.error("충돌방지 경고등 제어 실패:", error);
-    alert("PC backend 서버에 연결할 수 없습니다.");
-  }
-};
+  };
 
   const handleIgnitionClick = () => {
     const next = !ignitionOn;
@@ -444,7 +455,9 @@ const handleWarningLightClick = async () => {
 
             <button
               className={`buzzer-button ${warningLightOn ? "active" : ""}`}
+              type="button"
               onClick={handleWarningLightClick}
+              disabled={warningLightPending}
             >
               !
             </button>

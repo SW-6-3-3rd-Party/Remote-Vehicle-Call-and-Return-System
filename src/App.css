@@ -4598,6 +4598,30 @@ body,
   margin-top: 28px !important;
 }
 
+.side-buzzer-card .buzzer-button {
+  border-color: rgba(148, 163, 184, 0.45) !important;
+  background: rgba(15, 23, 42, 0.86) !important;
+  color: #cbd5e1 !important;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.12s ease !important;
+}
+
+.side-buzzer-card .buzzer-button.active {
+  border-color: #facc15 !important;
+  background: #facc15 !important;
+  color: #111827 !important;
+  box-shadow: 0 0 22px rgba(250, 204, 21, 0.52) !important;
+}
+
+.side-buzzer-card .buzzer-button:disabled {
+  cursor: wait !important;
+  opacity: 0.82 !important;
+}
+
 .bottom-brake-card .brake-button {
   margin-top: 22px !important;
 }
