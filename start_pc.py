@@ -32,7 +32,7 @@ PROCESSES = [
 def check_prerequisites():
     missing_python = [
         module
-        for module in ("flask", "doipclient", "udsoncan")
+        for module in ("flask", "doipclient", "udsoncan", "someipy")
         if find_spec(module) is None
     ]
     missing_node = not (ROOT / "node_modules" / ".bin" / "vite").exists()

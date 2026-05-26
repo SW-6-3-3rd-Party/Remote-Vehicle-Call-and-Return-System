@@ -1,22 +1,20 @@
+import asyncio
 import json
+import shutil
 import socket
-import threading
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
 
-
-SOMEIP_PROTOCOL_VERSION = 0x01
-SOMEIP_INTERFACE_VERSION = 0x01
-SOMEIP_REQUEST = 0x00
-SOMEIP_RESPONSE = 0x80
-SOMEIP_E_OK = 0x00
-SOMEIP_E_NOT_OK = 0x01
 
 PC_CLIENT_ID = 0x0E00
+PC_SOMEIP_CLIENT_PORT = 30500
+VEHICLE_ID = 1
 
 MAIN_ECU_IP = "192.168.10.2"
 MEDIA_PI_IP = "192.168.20.2"
-
-MAIN_SOMEIP_PORT = 30492
-MEDIA_SOMEIP_PORT = 30491
 
 COLLISION_WARNING_SERVICE_ID = 0x2000
 ACCIDENT_HISTORY_SERVICE_ID = 0x1001
@@ -26,116 +24,182 @@ SET_WARNING_LIGHT_METHOD_ID = 0x0001
 GET_WARNING_LIGHT_METHOD_ID = 0x0002
 GET_ACCIDENT_LIST_METHOD_ID = 0x0001
 
+SOMEIP_SD_MULTICAST_IP = "224.224.224.245"
+SOMEIP_SD_PORT = 30490
+
+_daemon_proc = None
+
 
 class SomeIpError(Exception):
-    """Raised when a SOME/IP UDP request cannot be completed."""
+    """Raised when a SOME/IP request cannot be completed."""
+
+
+def _detect_vehicle_interface_ip():
+    for target in (MAIN_ECU_IP, MEDIA_PI_IP):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.connect((target, 1))
+                return sock.getsockname()[0]
+        except OSError:
+            continue
+    return "0.0.0.0"
+
+
+def _find_someipyd():
+    candidates = [
+        shutil.which("someipyd"),
+        str(Path(sys.executable).parent / "someipyd"),
+        str(Path(sys.executable).parent / "someipyd.exe"),
+        str(Path(sys.executable).parent / "Scripts" / "someipyd"),
+        str(Path(sys.executable).parent / "Scripts" / "someipyd.exe"),
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    return None
+
+
+def _write_someipyd_config(interface_ip):
+    config_path = Path(tempfile.gettempdir()) / "pc_someipyd.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "interface": interface_ip,
+                "sd_address": SOMEIP_SD_MULTICAST_IP,
+                "sd_port": SOMEIP_SD_PORT,
+                "log_level": "INFO",
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def _ensure_someipyd_running():
+    global _daemon_proc
+
+    if _daemon_proc is not None and _daemon_proc.poll() is None:
+        return
+
+    someipyd = _find_someipyd()
+    if someipyd is None:
+        raise SomeIpError(
+            "someipyd executable not found. Install with "
+            "`python -m pip install -r src/pc_backend/requirements.txt`."
+        )
+
+    interface_ip = _detect_vehicle_interface_ip()
+    config_path = _write_someipyd_config(interface_ip)
+    log_path = Path(tempfile.gettempdir()) / "pc_someipyd.log"
+
+    _daemon_proc = subprocess.Popen(
+        [someipyd, "--config", str(config_path), "--log-path", str(log_path)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    time.sleep(0.5)
+    if _daemon_proc.poll() is not None:
+        raise SomeIpError(f"someipyd exited early with code {_daemon_proc.returncode}")
+
+
+def _build_service(service_id, method_id):
+    try:
+        from someipy import Method, ServiceBuilder, TransportLayerProtocol
+    except ImportError as exc:
+        raise SomeIpError(
+            "someipy is not installed. Install with "
+            "`python -m pip install -r src/pc_backend/requirements.txt`."
+        ) from exc
+
+    method = Method(id=method_id, protocol=TransportLayerProtocol.UDP)
+    return (
+        ServiceBuilder()
+        .with_service_id(service_id)
+        .with_major_version(1)
+        .with_method(method)
+        .build()
+    )
 
 
 class SomeIpClient:
-    def __init__(self, client_id=PC_CLIENT_ID, timeout=2.0):
+    def __init__(self, client_id=PC_CLIENT_ID, timeout=5.0):
         self.client_id = client_id
         self.timeout = timeout
-        self._session_id = 0
-        self._lock = threading.Lock()
 
-    def call(self, host, port, service_id, method_id, payload):
+    def call(self, service_id, method_id, payload):
         payload_bytes = b"" if payload is None else json.dumps(payload).encode("utf-8")
-        session_id = self._next_session_id()
-        request = self._build_request(
-            service_id=service_id,
-            method_id=method_id,
-            session_id=session_id,
-            payload=payload_bytes,
+        try:
+            return asyncio.run(self._call_async(service_id, method_id, payload_bytes))
+        except SomeIpError:
+            raise
+        except Exception as exc:
+            raise SomeIpError(str(exc)) from exc
+
+    async def _call_async(self, service_id, method_id, payload_bytes):
+        try:
+            from someipy import (
+                ClientServiceInstance,
+                MessageType,
+                ReturnCode,
+                connect_to_someipy_daemon,
+            )
+        except ImportError as exc:
+            raise SomeIpError(
+                "someipy is not installed. Install with "
+                "`python -m pip install -r src/pc_backend/requirements.txt`."
+            ) from exc
+
+        _ensure_someipyd_running()
+
+        daemon = await connect_to_someipy_daemon()
+        try:
+            service = _build_service(service_id, method_id)
+            instance = ClientServiceInstance(
+                daemon=daemon,
+                service=service,
+                instance_id=INSTANCE_ID,
+                endpoint_ip=_detect_vehicle_interface_ip(),
+                endpoint_port=PC_SOMEIP_CLIENT_PORT,
+                client_id=self.client_id,
+            )
+
+            await self._wait_until_available(instance, service_id)
+            result = await asyncio.wait_for(
+                instance.call_method(method_id, payload_bytes),
+                timeout=self.timeout,
+            )
+
+            if result.message_type != MessageType.RESPONSE:
+                raise SomeIpError(f"SOME/IP unexpected message type: {result.message_type}")
+            if result.return_code != ReturnCode.E_OK:
+                raise SomeIpError(f"SOME/IP return code error: {result.return_code}")
+
+            if not result.payload:
+                return {}
+            return json.loads(result.payload.decode("utf-8"))
+        finally:
+            await daemon.disconnect_from_daemon()
+
+    async def _wait_until_available(self, instance, service_id):
+        deadline = time.time() + self.timeout
+        while time.time() < deadline:
+            if await self._is_available(instance):
+                return
+            await asyncio.sleep(0.1)
+
+        raise SomeIpError(
+            f"SOME/IP service 0x{service_id:04X} was not discovered via SD"
         )
 
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.settimeout(self.timeout)
-            sock.sendto(request, (host, port))
-
-            try:
-                response, _ = sock.recvfrom(4096)
-            except socket.timeout as exc:
-                raise SomeIpError(
-                    f"SOME/IP response timeout: {host}:{port} "
-                    f"svc=0x{service_id:04X} method=0x{method_id:04X}"
-                ) from exc
-
-        return self._parse_response(response, service_id, method_id, session_id)
-
-    def _next_session_id(self):
-        with self._lock:
-            self._session_id = (self._session_id + 1) & 0xFFFF
-            if self._session_id == 0:
-                self._session_id = 1
-            return self._session_id
-
-    def _build_request(self, service_id, method_id, session_id, payload):
-        length = 8 + len(payload)
-        header = bytearray(16)
-        header[0:2] = service_id.to_bytes(2, "big")
-        header[2:4] = method_id.to_bytes(2, "big")
-        header[4:8] = length.to_bytes(4, "big")
-        header[8:10] = self.client_id.to_bytes(2, "big")
-        header[10:12] = session_id.to_bytes(2, "big")
-        header[12] = SOMEIP_PROTOCOL_VERSION
-        header[13] = SOMEIP_INTERFACE_VERSION
-        header[14] = SOMEIP_REQUEST
-        header[15] = SOMEIP_E_OK
-        return bytes(header) + payload
-
-    def _parse_response(self, response, service_id, method_id, session_id):
-        if len(response) < 16:
-            raise SomeIpError(f"SOME/IP response too short: {len(response)}B")
-
-        rx_service_id = int.from_bytes(response[0:2], "big")
-        rx_method_id = int.from_bytes(response[2:4], "big")
-        rx_length = int.from_bytes(response[4:8], "big")
-        rx_client_id = int.from_bytes(response[8:10], "big")
-        rx_session_id = int.from_bytes(response[10:12], "big")
-        protocol_version = response[12]
-        interface_version = response[13]
-        message_type = response[14]
-        return_code = response[15]
-        payload = response[16:]
-
-        if rx_service_id != service_id or rx_method_id != method_id:
-            raise SomeIpError(
-                "SOME/IP response id mismatch: "
-                f"svc=0x{rx_service_id:04X} method=0x{rx_method_id:04X}"
-            )
-
-        if rx_client_id != self.client_id or rx_session_id != session_id:
-            raise SomeIpError(
-                "SOME/IP response session mismatch: "
-                f"client=0x{rx_client_id:04X} session=0x{rx_session_id:04X}"
-            )
-
-        if protocol_version != SOMEIP_PROTOCOL_VERSION:
-            raise SomeIpError(f"SOME/IP protocol version mismatch: {protocol_version}")
-
-        if interface_version != SOMEIP_INTERFACE_VERSION:
-            raise SomeIpError(f"SOME/IP interface version mismatch: {interface_version}")
-
-        if message_type != SOMEIP_RESPONSE:
-            raise SomeIpError(f"SOME/IP unexpected message type: 0x{message_type:02X}")
-
-        if return_code != SOMEIP_E_OK:
-            raise SomeIpError(f"SOME/IP return code error: 0x{return_code:02X}")
-
-        expected_payload_len = max(0, rx_length - 8)
-        if expected_payload_len != len(payload):
-            raise SomeIpError(
-                "SOME/IP length mismatch: "
-                f"length={rx_length} payload={len(payload)}"
-            )
-
-        if not payload:
-            return {}
-
-        try:
-            return json.loads(payload.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise SomeIpError(f"SOME/IP payload is not valid JSON: {exc}") from exc
+    async def _is_available(self, instance):
+        if hasattr(instance, "is_available"):
+            return bool(await instance.is_available())
+        if hasattr(instance, "service_found"):
+            value = instance.service_found
+            return bool(value() if callable(value) else value)
+        return True
 
 
 someip_client = SomeIpClient()
@@ -143,8 +207,6 @@ someip_client = SomeIpClient()
 
 def set_warning_light(enable):
     return someip_client.call(
-        host=MAIN_ECU_IP,
-        port=MAIN_SOMEIP_PORT,
         service_id=COLLISION_WARNING_SERVICE_ID,
         method_id=SET_WARNING_LIGHT_METHOD_ID,
         payload={"enable": 1 if enable else 0},
@@ -153,19 +215,15 @@ def set_warning_light(enable):
 
 def get_warning_light():
     return someip_client.call(
-        host=MAIN_ECU_IP,
-        port=MAIN_SOMEIP_PORT,
         service_id=COLLISION_WARNING_SERVICE_ID,
         method_id=GET_WARNING_LIGHT_METHOD_ID,
-        payload=None,
+        payload={},
     )
 
 
 def get_accident_list():
     return someip_client.call(
-        host=MEDIA_PI_IP,
-        port=MEDIA_SOMEIP_PORT,
         service_id=ACCIDENT_HISTORY_SERVICE_ID,
         method_id=GET_ACCIDENT_LIST_METHOD_ID,
-        payload={},
+        payload={"vehicle_id": VEHICLE_ID},
     )
