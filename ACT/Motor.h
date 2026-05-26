@@ -33,6 +33,10 @@ void MotorControl_Coast(void);
  */
 void MotorControl_SetDutyPercent(uint32 dutyPercent);
 uint32 MotorControl_GetDutyPercent(void);
+void MotorControl_SetWheelDutyPercent(uint32 leftDutyPercent,
+                                      uint32 rightDutyPercent);
+uint32 MotorControl_GetLeftDutyPercent(void);
+uint32 MotorControl_GetRightDutyPercent(void);
 
 /*
  * 현재 상태 유지용 업데이트

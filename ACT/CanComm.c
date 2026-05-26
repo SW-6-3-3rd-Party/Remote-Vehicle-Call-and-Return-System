@@ -21,13 +21,15 @@
  * STB = P20.6 = LOW to enable CAN transceiver
  *
  * PCAN-View:
- * Classical CAN
+ * CAN FD with bitrate switching
  * Standard ID
- * 500 kbit/s
+ * Nominal phase: 500 kbit/s
+ * Data phase   : 2 Mbit/s
  * ======================================================
  */
 
 #define CAN_BAUDRATE              (500000U)
+#define CAN_FAST_BAUDRATE         (2000000U)
 #define CAN_TX_ID                 (ACT_STATUS_CAN_ID)
 
 #define CAN_MODULE_RAM_BASE       (0xF0200000U)
@@ -114,8 +116,9 @@ void CanComm_Init(void)
     nodeConfig.nodeId = IfxCan_NodeId_0;
     nodeConfig.clockSource = IfxCan_ClockSource_both;
     nodeConfig.baudRate.baudrate = CAN_BAUDRATE;
+    nodeConfig.fastBaudRate.baudrate = CAN_FAST_BAUDRATE;
     nodeConfig.frame.type = IfxCan_FrameType_transmitAndReceive;
-    nodeConfig.frame.mode = IfxCan_FrameMode_standard;
+    nodeConfig.frame.mode = IfxCan_FrameMode_fdLongAndFast;
 
     nodeConfig.txConfig.txMode = IfxCan_TxMode_dedicatedBuffers;
     nodeConfig.txConfig.dedicatedTxBuffersNumber = CAN_TX_BUFFER_COUNT;
@@ -149,7 +152,7 @@ void CanComm_SendActStatus(uint32 speedKmhX100,
 {
     IfxCan_Message txMsg;
     uint32 txData[2];
-    uint8 txByte[8];
+    uint8 txByte[5];
     uint16 speed16;
     IfxCan_Status status;
 
@@ -167,17 +170,19 @@ void CanComm_SendActStatus(uint32 speedKmhX100,
 
     /*
      * ActStatusMsg, ACT -> MAIN, 50ms
-     * Byte0 speed_L, Byte1 speed_H, Byte2 gear, Byte3 steering_state,
-     * Byte4 steering_angle, Byte5~7 reserved 0x00.
+     * CAN ID 0x200, DLC 5
+     *
+     * Byte0 speed_L
+     * Byte1 speed_H
+     * Byte2 gear_state
+     * Byte3 steering_state
+     * Byte4 steering_angle
      */
     txByte[0] = (uint8)(speed16 & 0x00FFU);
     txByte[1] = (uint8)((speed16 >> 8U) & 0x00FFU);
     txByte[2] = gearState;
     txByte[3] = steeringState;
     txByte[4] = steeringAngleDeg;
-    txByte[5] = 0U;
-    txByte[6] = 0U;
-    txByte[7] = 0U;
 
     txData[0] = 0U;
     txData[1] = 0U;
@@ -188,16 +193,13 @@ void CanComm_SendActStatus(uint32 speedKmhX100,
     txData[0] |= ((uint32)txByte[3]) << 24U;
 
     txData[1] |= ((uint32)txByte[4]) << 0U;
-    txData[1] |= ((uint32)txByte[5]) << 8U;
-    txData[1] |= ((uint32)txByte[6]) << 16U;
-    txData[1] |= ((uint32)txByte[7]) << 24U;
 
     IfxCan_Can_initMessage(&txMsg);
 
-    txMsg.messageId = CAN_TX_ID;
+    txMsg.messageId = ACT_STATUS_CAN_ID;
     txMsg.messageIdLength = IfxCan_MessageIdLength_standard;
-    txMsg.frameMode = IfxCan_FrameMode_standard;
-    txMsg.dataLengthCode = IfxCan_DataLengthCode_8;
+    txMsg.frameMode = IfxCan_FrameMode_fdLongAndFast;
+    txMsg.dataLengthCode = ACT_STATUS_CAN_DLC_IFX;
 
     txMsg.bufferNumber = g_txBufferIndex;
     txMsg.storeInTxFifoQueue = FALSE;

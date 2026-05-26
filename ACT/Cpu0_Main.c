@@ -9,6 +9,7 @@
 #include "ActCan.h"
 #include "CanComm.h"
 #include "PotAdc.h"
+#include "UdsDiag.h"
 
 IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
 
@@ -32,20 +33,26 @@ IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
  * ACT -> MAIN Drive Status는 50ms마다 송신한다.
  * 새 CAN 인터페이스에서는 status alive_counter/crc8을 사용하지 않는다.
  */
-#define CAN_STATUS_TX_PERIOD_MS     (50U)
+#define CAN_STATUS_TX_PERIOD_MS      (50U)
 
 /*
  * 서보 갱신 주기
  * Steering_Update() 1회가 약 20ms blocking pulse 출력
  */
-#define STEERING_UPDATE_PERIOD_MS   (20U)
+#define STEERING_UPDATE_PERIOD_MS    (20U)
 
 /*
  * 조향 상태 판정 기준
- * 0deg=LEFT, 90deg=CENTER, 180deg=RIGHT 기준.
+ *
+ * 현재 PotAdc_GetAngleDeg()는 CAN용 각도:
+ *   55  = LEFT  max, 실제 -35deg
+ *   90  = CENTER,   실제   0deg
+ *   125 = RIGHT max, 실제 +35deg
+ *
+ * 따라서 80~100을 CENTER 범위로 본다.
  */
-#define STEERING_CENTER_LOW_DEG     (80U)
-#define STEERING_CENTER_HIGH_DEG    (100U)
+#define STEERING_CENTER_LOW_DEG      (80U)
+#define STEERING_CENTER_HIGH_DEG     (100U)
 
 /*
  * Debug Watch 변수
@@ -124,10 +131,10 @@ static uint8 App_GetCurrentGearStateForCan(void)
 static uint8 App_GetCurrentSteeringStateForCan(uint8 steeringAngleDeg)
 {
     /*
-     * potentiometer angle 기준:
-     * 0deg   근처 = LEFT
-     * 90deg  근처 = CENTER
-     * 180deg 근처 = RIGHT
+     * PotAdc_GetAngleDeg() 기준:
+     *   55  근처 = LEFT
+     *   90  근처 = CENTER
+     *   125 근처 = RIGHT
      */
     if (steeringAngleDeg < STEERING_CENTER_LOW_DEG)
     {
@@ -210,6 +217,17 @@ static void App_Update1ms(void)
     App_UpdateCanRxFor1ms();
 
     /*
+     * 1-1. UDS 진단 처리
+     *
+     * RoutineControl이 모터/서보 상태를 바꿀 수 있으므로
+     * MotorControl_Update()보다 먼저 호출한다.
+     *
+     * UDS 요청은 ActCan RX ISR에서 UdsDiag_OnCanRequest()로 저장되고,
+     * 실제 처리는 여기서 수행된다.
+     */
+    UdsDiag_Update1ms();
+
+    /*
      * 2. 현재 모터 상태대로 PWM 1 cycle 출력
      */
     MotorControl_Update();
@@ -220,7 +238,7 @@ static void App_Update1ms(void)
     Encoder_Update1ms();
 
     /*
-     * 4. A3 가변저항 ADC 값 갱신
+     * 4. A3 / AN37 가변저항 ADC 값 갱신
      */
     PotAdc_Update1ms();
 
@@ -259,20 +277,24 @@ void core0_main(void)
      * CanComm_Init()은 호출하지 않는다.
      *
      * ActCan_Init()이 CAN0 Node0, P20.8/P20.7, P20.6 STB LOW,
-     * RX filter, RX interrupt, TX buffer까지 모두 초기화해야 한다.
+     * RX filter, RX interrupt, TX buffer까지 모두 초기화한다.
+     *
+     * UDS도 같은 CAN0 Node0을 사용한다.
      */
     ActCan_Init();
+    UdsDiag_Init();
 
     /*
      * 기본 속도
      */
-    MotorControl_SetDutyPercent(70U);
+    MotorControl_SetDutyPercent(90U);
 
     /*
      * 초기 안전 상태
      */
     MotorControl_Coast();
     Steering_Center();
+    Steering_UpdateForMs(500U);
     Encoder_ResetCount();
 
     while (1)
@@ -285,10 +307,10 @@ void core0_main(void)
         /*
          * 서보 조향 업데이트
          *
-         * 주의:
-         * 현재 Steering_Update()는 20ms 동안 blocking으로 서보 펄스를 만든다.
-         * 그래서 모터 PWM이 잠깐 끊길 수 있다.
-         * 실제 최종형에서는 서보도 GTM/TOM 하드웨어 PWM으로 빼는 게 맞다.
+         * 현재 Steering_Update()는 blocking으로 서보 펄스를 만든다.
+         * Servo.c의 LOW 구간에서 MotorControl_Update()를 반복 호출하여
+         * 서보 유지 중에도 모터 PWM이 계속 출력되게 한다.
+         * 실제 최종형에서는 모터/서보 모두 GTM/TOM 하드웨어 PWM으로 빼는 게 맞다.
          */
         g_steeringUpdateTimerMs++;
 

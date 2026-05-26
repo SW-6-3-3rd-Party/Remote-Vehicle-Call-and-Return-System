@@ -9,28 +9,34 @@
 
 #include "Motor.h"
 #include "Servo.h"
+#include "UdsDiag.h"
 
 /*
  * ======================================================
  * TC375 ACT CAN RX
  * ======================================================
  * CAN0 Node0
- * Classical CAN
+ * CAN FD with bitrate switching
  * Standard ID
- * 500kbps
+ * Nominal phase: 500 kbit/s
+ * Data phase   : 2 Mbit/s
  *
- * RX ID: 0x321 MAIN -> ACT command, period 20ms
- * TX uses the same CAN0 Node0 through CanComm_SendActStatus().
+ * RX ID 1: 0x100 MAIN -> ACT command, period 20ms, DLC 6
+ * RX ID 2: 0x700 MAIN/Tester -> ACT UDS diagnostic request, DLC 8
+ *
+ * TX ID 1: 0x200 ACT -> MAIN status, period 50ms, DLC 5
+ * TX ID 2: 0x708 ACT -> MAIN/Tester UDS diagnostic response, DLC 8 or 12
+ *
+ * TX uses the same CAN0 Node0 through ActCan_GetCanNode().
  * ======================================================
  */
 #define ACT_CAN_BAUDRATE                    (500000U)
+#define ACT_CAN_FAST_BAUDRATE               (2000000U)
 #define ACT_CAN_ISR_PRIORITY_RX             (10U)
 
 /*
  * 100us tick 기준.
  * MAIN -> ACT command 주기는 20ms이므로 200ms는 약 10-frame timeout이다.
- * 새 인터페이스에서는 Byte6 alive_counter를 쓰지 않으므로,
- * 정상 command frame 수신 여부로 fail-safe를 판단한다.
  */
 #define ACT_CAN_CMD_TIMEOUT_100US_TICKS     (2000U)
 
@@ -40,7 +46,16 @@
 #define ACT_CAN_STB_PORT                    (&MODULE_P20)
 #define ACT_CAN_STB_PIN                     (6U)
 
-#define ACT_CAN_TX_BUFFER_COUNT             (2U)
+#define ACT_DRIVE_BASE_DUTY_PERCENT         (90U)
+#define ACT_TURN_INNER_DUTY_PERCENT         (30U)
+#define ACT_TURN_OUTER_DUTY_PERCENT         (100U)
+
+/*
+ * TX Buffer 사용 분리:
+ *   Status CAN : buffer 0, 1
+ *   UDS CAN    : buffer 2, 3
+ */
+#define ACT_CAN_TX_BUFFER_COUNT             (4U)
 
 IFX_CONST IfxCan_Can_Pins g_actCanPins =
 {
@@ -59,7 +74,10 @@ typedef struct
     IfxCan_Can canModule;
     IfxCan_Can_Node canNode;
     IfxCan_Can_NodeConfig nodeConfig;
-    IfxCan_Filter canFilter;
+
+    IfxCan_Filter canFilterCmd;
+    IfxCan_Filter canFilterDiag;
+
     IfxCan_Message rxMsg;
     uint32 rxData[2];
 } ActCanDriver;
@@ -97,7 +115,10 @@ static void ActCan_EnableTransceiver(void)
                              IfxPort_OutputMode_pushPull,
                              IfxPort_OutputIdx_general);
 
-    /* CAN transceiver normal mode: LOW */
+    /*
+     * CAN transceiver normal mode:
+     * STB LOW = enable
+     */
     IfxPort_setPinLow(ACT_CAN_STB_PORT, ACT_CAN_STB_PIN);
 }
 
@@ -134,21 +155,32 @@ static boolean ActCan_IsValidSafetyOverride(uint8 value)
             (value == ACT_CAN_SAFETY_FORCE_STOP));
 }
 
+static boolean ActCan_IsCanFdFrameMode(IfxCan_FrameMode frameMode)
+{
+    return ((frameMode == IfxCan_FrameMode_fdLong) ||
+            (frameMode == IfxCan_FrameMode_fdLongAndFast));
+}
+
 static void ActCan_ApplySteering(uint8 steeringRaw)
 {
     switch (steeringRaw)
     {
         case ACT_CAN_STEERING_LEFT:
             Steering_SetKey(STEERING_KEY_LEFT);
+            MotorControl_SetWheelDutyPercent(ACT_TURN_INNER_DUTY_PERCENT,
+                                             ACT_TURN_OUTER_DUTY_PERCENT);
             break;
 
         case ACT_CAN_STEERING_RIGHT:
             Steering_SetKey(STEERING_KEY_RIGHT);
+            MotorControl_SetWheelDutyPercent(ACT_TURN_OUTER_DUTY_PERCENT,
+                                             ACT_TURN_INNER_DUTY_PERCENT);
             break;
 
         case ACT_CAN_STEERING_NULL:
         default:
             Steering_SetKey(STEERING_KEY_NULL);
+            MotorControl_SetDutyPercent(ACT_DRIVE_BASE_DUTY_PERCENT);
             break;
     }
 }
@@ -198,6 +230,7 @@ static void ActCan_EnterSafeState(void)
     g_currentSafetyOverride = ACT_SAFETY_OVERRIDE_FORCE_STOP;
 
     MotorControl_Brake();
+    MotorControl_SetDutyPercent(ACT_DRIVE_BASE_DUTY_PERCENT);
     Steering_Center();
 }
 
@@ -210,6 +243,7 @@ static void ActCan_EnterModeInhibitState(uint8 controlModeRaw)
     g_currentSafetyOverride = ACT_SAFETY_OVERRIDE_NORMAL;
 
     MotorControl_Brake();
+    MotorControl_SetDutyPercent(ACT_DRIVE_BASE_DUTY_PERCENT);
     Steering_Center();
 }
 
@@ -237,13 +271,6 @@ void ActCan_RxIsrHandler(void)
     IfxCan_Node_clearRxBufferNewDataFlag(g_actCan.canNode.node,
                                          ACT_CAN_RX_BUFFER_ID);
 
-    if ((g_actCan.rxMsg.messageId != ACT_CAN_CMD_ID) ||
-        (g_actCan.rxMsg.dataLengthCode != IfxCan_DataLengthCode_8))
-    {
-        g_invalidCount++;
-        return;
-    }
-
     rxByte[0] = (uint8)((g_actCan.rxData[0] >> 0U)  & 0xFFU);
     rxByte[1] = (uint8)((g_actCan.rxData[0] >> 8U)  & 0xFFU);
     rxByte[2] = (uint8)((g_actCan.rxData[0] >> 16U) & 0xFFU);
@@ -254,16 +281,53 @@ void ActCan_RxIsrHandler(void)
     rxByte[6] = (uint8)((g_actCan.rxData[1] >> 16U) & 0xFFU);
     rxByte[7] = (uint8)((g_actCan.rxData[1] >> 24U) & 0xFFU);
 
+    /*
+     * ======================================================
+     * UDS Diagnostic Request
+     * MAIN/Tester -> ACT
+     * CAN ID 0x700
+     *
+     * ISR에서는 요청만 저장하고,
+     * 실제 서비스 처리는 UdsDiag_Update1ms()에서 수행한다.
+     * ======================================================
+     */
+    if (g_actCan.rxMsg.messageId == UDS_DIAG_REQ_CAN_ID)
+    {
+        if ((ActCan_IsCanFdFrameMode(g_actCan.rxMsg.frameMode) == TRUE) &&
+            (g_actCan.rxMsg.dataLengthCode == IfxCan_DataLengthCode_8))
+        {
+            UdsDiag_OnCanRequest(rxByte);
+        }
+        else
+        {
+            g_invalidCount++;
+        }
+
+        return;
+    }
+
+    /*
+     * ======================================================
+     * Normal ACT Control Command
+     * MAIN -> ACT
+     * CAN ID 0x100
+     * DLC 6
+     * ======================================================
+     */
+    if ((g_actCan.rxMsg.messageId != ACT_CAN_CMD_ID) ||
+        (ActCan_IsCanFdFrameMode(g_actCan.rxMsg.frameMode) == FALSE) ||
+        (g_actCan.rxMsg.dataLengthCode != ACT_CAN_DLC_IFX))
+    {
+        g_invalidCount++;
+        return;
+    }
+
     accelRaw = rxByte[0];
     steeringRaw = rxByte[1];
     brakeRaw = rxByte[2];
     gearRaw = rxByte[3];
     controlModeRaw = rxByte[4];
     safetyOverrideRaw = rxByte[5];
-
-    /* Byte6~Byte7 are reserved and ignored. */
-    (void)rxByte[6];
-    (void)rxByte[7];
 
     if ((ActCan_IsValidBool(accelRaw) == FALSE) ||
         (ActCan_IsValidSteering(steeringRaw) == FALSE) ||
@@ -276,7 +340,10 @@ void ActCan_RxIsrHandler(void)
         return;
     }
 
-    /* Valid command frame received. Reset command timeout. */
+    /*
+     * Valid command frame received.
+     * Reset command timeout.
+     */
     g_cmdTimeoutTick100us = 0U;
     g_safeStateEnteredByTimeout = FALSE;
 
@@ -304,18 +371,24 @@ void ActCan_Init(void)
     g_actCan.nodeConfig.nodeId = IfxCan_NodeId_0;
     g_actCan.nodeConfig.clockSource = IfxCan_ClockSource_both;
     g_actCan.nodeConfig.frame.type = IfxCan_FrameType_transmitAndReceive;
-    g_actCan.nodeConfig.frame.mode = IfxCan_FrameMode_standard;
+    g_actCan.nodeConfig.frame.mode = IfxCan_FrameMode_fdLongAndFast;
     g_actCan.nodeConfig.baudRate.baudrate = ACT_CAN_BAUDRATE;
+    g_actCan.nodeConfig.fastBaudRate.baudrate = ACT_CAN_FAST_BAUDRATE;
 
     g_actCan.nodeConfig.txConfig.txMode = IfxCan_TxMode_dedicatedBuffers;
     g_actCan.nodeConfig.txConfig.dedicatedTxBuffersNumber = ACT_CAN_TX_BUFFER_COUNT;
-    g_actCan.nodeConfig.txConfig.txBufferDataFieldSize = IfxCan_DataFieldSize_8;
+    g_actCan.nodeConfig.txConfig.txBufferDataFieldSize = IfxCan_DataFieldSize_12;
 
     g_actCan.nodeConfig.rxConfig.rxMode = IfxCan_RxMode_dedicatedBuffers;
     g_actCan.nodeConfig.rxConfig.rxBufferDataFieldSize = IfxCan_DataFieldSize_8;
 
+    /*
+     * Standard Filter 2개:
+     *   Filter 0: 0x100 control command
+     *   Filter 1: 0x700 UDS diagnostic request
+     */
     g_actCan.nodeConfig.filterConfig.messageIdLength = IfxCan_MessageIdLength_standard;
-    g_actCan.nodeConfig.filterConfig.standardListSize = 1U;
+    g_actCan.nodeConfig.filterConfig.standardListSize = 2U;
     g_actCan.nodeConfig.filterConfig.standardFilterForNonMatchingFrames = IfxCan_NonMatchingFrame_reject;
     g_actCan.nodeConfig.filterConfig.rejectRemoteFramesWithStandardId = TRUE;
     g_actCan.nodeConfig.filterConfig.rejectRemoteFramesWithExtendedId = TRUE;
@@ -334,14 +407,36 @@ void ActCan_Init(void)
 
     IfxCan_Can_initNode(&g_actCan.canNode, &g_actCan.nodeConfig);
 
-    g_actCan.canFilter.number = 0U;
-    g_actCan.canFilter.elementConfiguration = IfxCan_FilterElementConfiguration_storeInRxBuffer;
-    g_actCan.canFilter.type = IfxCan_FilterType_none;
-    g_actCan.canFilter.id1 = ACT_CAN_CMD_ID;
-    g_actCan.canFilter.id2 = ACT_CAN_CMD_ID;
-    g_actCan.canFilter.rxBufferOffset = ACT_CAN_RX_BUFFER_ID;
+    /*
+     * Filter 0:
+     * MAIN -> ACT control command
+     * CAN ID 0x100
+     */
+    g_actCan.canFilterCmd.number = 0U;
+    g_actCan.canFilterCmd.elementConfiguration = IfxCan_FilterElementConfiguration_storeInRxBuffer;
+    g_actCan.canFilterCmd.type = IfxCan_FilterType_none;
+    g_actCan.canFilterCmd.id1 = ACT_CAN_CMD_ID;
+    g_actCan.canFilterCmd.id2 = ACT_CAN_CMD_ID;
+    g_actCan.canFilterCmd.rxBufferOffset = ACT_CAN_RX_BUFFER_ID;
 
-    IfxCan_Can_setStandardFilter(&g_actCan.canNode, &g_actCan.canFilter);
+    IfxCan_Can_setStandardFilter(&g_actCan.canNode, &g_actCan.canFilterCmd);
+
+    /*
+     * Filter 1:
+     * MAIN/Tester -> ACT UDS diagnostic request
+     * CAN ID 0x700
+     *
+     * 같은 Dedicated RX Buffer 0에 저장하고,
+     * ISR에서 messageId로 0x100 / 0x700을 분기한다.
+     */
+    g_actCan.canFilterDiag.number = 1U;
+    g_actCan.canFilterDiag.elementConfiguration = IfxCan_FilterElementConfiguration_storeInRxBuffer;
+    g_actCan.canFilterDiag.type = IfxCan_FilterType_none;
+    g_actCan.canFilterDiag.id1 = UDS_DIAG_REQ_CAN_ID;
+    g_actCan.canFilterDiag.id2 = UDS_DIAG_REQ_CAN_ID;
+    g_actCan.canFilterDiag.rxBufferOffset = ACT_CAN_RX_BUFFER_ID;
+
+    IfxCan_Can_setStandardFilter(&g_actCan.canNode, &g_actCan.canFilterDiag);
 
     g_rxAccelRaw = ACT_CAN_ACCEL_OFF;
     g_rxSteeringRaw = ACT_CAN_STEERING_NULL;
@@ -365,6 +460,7 @@ void ActCan_Init(void)
     g_cmdTimeoutTick100us = ACT_CAN_CMD_TIMEOUT_100US_TICKS;
     g_safeStateEnteredByTimeout = FALSE;
 
+    MotorControl_SetDutyPercent(ACT_DRIVE_BASE_DUTY_PERCENT);
     MotorControl_Coast();
     Steering_Center();
 }
@@ -390,6 +486,7 @@ void ActCan_Update100us(void)
             g_timeoutCount++;
             g_safeStateEnteredByTimeout = TRUE;
         }
+
         ActCan_EnterSafeState();
         return;
     }

@@ -12,7 +12,7 @@ typedef enum
 
 typedef enum
 {
-    STEERING_KEY_NULL = 0,      /* 신호 없음: 같은 속도로 중앙 복귀 */
+    STEERING_KEY_NULL = 0,      /* No steering command: center immediately */
     STEERING_KEY_LEFT = 1,      /* 왼쪽 신호 유지: 왼쪽으로 연속 조향 */
     STEERING_KEY_RIGHT = 2      /* 오른쪽 신호 유지: 오른쪽으로 연속 조향 */
 } SteeringKey;
@@ -24,8 +24,8 @@ SteeringState Steering_GetState(void);
 
 /*
  * 연속 조향 제어용.
- * LEFT/RIGHT 신호가 유지되는 동안 Steering_Update()가 20ms마다 한 스텝씩 이동한다.
- * NULL이면 현재 각도 유지가 아니라, 같은 속도로 중앙으로 자동 복귀한다.
+ * LEFT/RIGHT/NULL 명령을 받으면 다음 Steering_Update()에서 목표 pulse로 즉시 이동한다.
+ * NULL이면 현재 각도 유지가 아니라 중앙으로 즉시 복귀한다.
  */
 void Steering_SetKey(SteeringKey key);
 SteeringKey Steering_GetKey(void);
@@ -35,7 +35,7 @@ void Steering_SetPulseUs(uint32 pulseUs);
 uint32 Steering_GetPulseUs(void);
 
 /*
- * 현재 key 상태에 따라 pulse를 한 스텝 갱신하고 서보 펄스 1회 출력.
+ * 현재 key 상태에 따라 목표 pulse를 즉시 반영하고 서보 펄스 1회 출력.
  * Steering_Update() 1회 = 약 20ms.
  * while(1) 안에서 계속 호출해야 서보 신호가 유지된다.
  */

@@ -60,9 +60,11 @@
 #define MOTOR_PWM_PERIOD_US       (1000U)
 
 /*
- * 처음 테스트용 기본 속도
+ * Default straight drive speed.
+ * Channel A is treated as left wheel, channel B as right wheel.
  */
-#define MOTOR_DEFAULT_DUTY_PERCENT    (30U)
+#define MOTOR_DEFAULT_DUTY_PERCENT    (90U)
+#define MOTOR_LEFT_IS_CHANNEL_A       (1U)
 
 /*
  * 방향 보정
@@ -82,6 +84,8 @@
 
 static MotorState g_motorState = MOTOR_STATE_STOP;
 static uint32 g_dutyPercent = MOTOR_DEFAULT_DUTY_PERCENT;
+static uint32 g_leftDutyPercent = MOTOR_DEFAULT_DUTY_PERCENT;
+static uint32 g_rightDutyPercent = MOTOR_DEFAULT_DUTY_PERCENT;
 
 
 static void delayUs(uint32 us)
@@ -94,15 +98,29 @@ static void delayUs(uint32 us)
  * Low Level: PWM Pin
  * ====================================================== */
 
-static void Motor_SetPwmHighBoth(void)
-{
-    IfxPort_setPinHigh(MOTOR_A_PWM_PORT, MOTOR_A_PWM_PIN);
-    IfxPort_setPinHigh(MOTOR_B_PWM_PORT, MOTOR_B_PWM_PIN);
-}
-
 static void Motor_SetPwmLowBoth(void)
 {
     IfxPort_setPinLow(MOTOR_A_PWM_PORT, MOTOR_A_PWM_PIN);
+    IfxPort_setPinLow(MOTOR_B_PWM_PORT, MOTOR_B_PWM_PIN);
+}
+
+static void MotorA_SetPwmHigh(void)
+{
+    IfxPort_setPinHigh(MOTOR_A_PWM_PORT, MOTOR_A_PWM_PIN);
+}
+
+static void MotorA_SetPwmLow(void)
+{
+    IfxPort_setPinLow(MOTOR_A_PWM_PORT, MOTOR_A_PWM_PIN);
+}
+
+static void MotorB_SetPwmHigh(void)
+{
+    IfxPort_setPinHigh(MOTOR_B_PWM_PORT, MOTOR_B_PWM_PIN);
+}
+
+static void MotorB_SetPwmLow(void)
+{
     IfxPort_setPinLow(MOTOR_B_PWM_PORT, MOTOR_B_PWM_PIN);
 }
 
@@ -182,33 +200,98 @@ static void Motor_SetDirectionReverseBoth(void)
 
 /* ======================================================
  * Software PWM 1 Cycle
- * 양쪽 모터 PWM을 동시에 HIGH/LOW 처리
+ * Motor A/B can use different duty values for steering compensation.
  * ====================================================== */
 
-static void Motor_SendPwmOneCycleBoth(uint32 dutyPercent)
+static uint32 Motor_LimitDutyPercent(uint32 dutyPercent)
 {
-    uint32 highTimeUs;
-    uint32 lowTimeUs;
-
     if (dutyPercent > 100U)
     {
         dutyPercent = 100U;
     }
 
-    highTimeUs = (MOTOR_PWM_PERIOD_US * dutyPercent) / 100U;
-    lowTimeUs = MOTOR_PWM_PERIOD_US - highTimeUs;
+    return dutyPercent;
+}
 
-    if (highTimeUs > 0U)
+static void Motor_SendPwmOneCycleChannels(uint32 dutyA, uint32 dutyB)
+{
+    uint32 highTimeAUs;
+    uint32 highTimeBUs;
+
+    dutyA = Motor_LimitDutyPercent(dutyA);
+    dutyB = Motor_LimitDutyPercent(dutyB);
+
+    highTimeAUs = (MOTOR_PWM_PERIOD_US * dutyA) / 100U;
+    highTimeBUs = (MOTOR_PWM_PERIOD_US * dutyB) / 100U;
+
+    Motor_SetPwmLowBoth();
+
+    if (highTimeAUs > 0U)
     {
-        Motor_SetPwmHighBoth();
-        delayUs(highTimeUs);
+        MotorA_SetPwmHigh();
     }
 
-    if (lowTimeUs > 0U)
+    if (highTimeBUs > 0U)
     {
+        MotorB_SetPwmHigh();
+    }
+
+    if (highTimeAUs == highTimeBUs)
+    {
+        if (highTimeAUs > 0U)
+        {
+            delayUs(highTimeAUs);
+        }
+
         Motor_SetPwmLowBoth();
-        delayUs(lowTimeUs);
+
+        if (highTimeAUs < MOTOR_PWM_PERIOD_US)
+        {
+            delayUs(MOTOR_PWM_PERIOD_US - highTimeAUs);
+        }
     }
+    else if (highTimeAUs < highTimeBUs)
+    {
+        if (highTimeAUs > 0U)
+        {
+            delayUs(highTimeAUs);
+        }
+
+        MotorA_SetPwmLow();
+        delayUs(highTimeBUs - highTimeAUs);
+        MotorB_SetPwmLow();
+
+        if (highTimeBUs < MOTOR_PWM_PERIOD_US)
+        {
+            delayUs(MOTOR_PWM_PERIOD_US - highTimeBUs);
+        }
+    }
+    else
+    {
+        if (highTimeBUs > 0U)
+        {
+            delayUs(highTimeBUs);
+        }
+
+        MotorB_SetPwmLow();
+        delayUs(highTimeAUs - highTimeBUs);
+        MotorA_SetPwmLow();
+
+        if (highTimeAUs < MOTOR_PWM_PERIOD_US)
+        {
+            delayUs(MOTOR_PWM_PERIOD_US - highTimeAUs);
+        }
+    }
+}
+
+static void Motor_SendPwmOneCycleWheels(uint32 leftDutyPercent,
+                                        uint32 rightDutyPercent)
+{
+#if MOTOR_LEFT_IS_CHANNEL_A
+    Motor_SendPwmOneCycleChannels(leftDutyPercent, rightDutyPercent);
+#else
+    Motor_SendPwmOneCycleChannels(rightDutyPercent, leftDutyPercent);
+#endif
 }
 
 
@@ -252,6 +335,8 @@ void MotorControl_Init(void)
 
     g_motorState = MOTOR_STATE_STOP;
     g_dutyPercent = MOTOR_DEFAULT_DUTY_PERCENT;
+    g_leftDutyPercent = MOTOR_DEFAULT_DUTY_PERCENT;
+    g_rightDutyPercent = MOTOR_DEFAULT_DUTY_PERCENT;
 
     MotorControl_Stop();
 }
@@ -307,17 +392,41 @@ void MotorControl_Coast(void)
 
 void MotorControl_SetDutyPercent(uint32 dutyPercent)
 {
-    if (dutyPercent > 100U)
-    {
-        dutyPercent = 100U;
-    }
+    dutyPercent = Motor_LimitDutyPercent(dutyPercent);
 
     g_dutyPercent = dutyPercent;
+    g_leftDutyPercent = dutyPercent;
+    g_rightDutyPercent = dutyPercent;
 }
 
 uint32 MotorControl_GetDutyPercent(void)
 {
     return g_dutyPercent;
+}
+
+void MotorControl_SetWheelDutyPercent(uint32 leftDutyPercent,
+                                      uint32 rightDutyPercent)
+{
+    leftDutyPercent = Motor_LimitDutyPercent(leftDutyPercent);
+    rightDutyPercent = Motor_LimitDutyPercent(rightDutyPercent);
+
+    g_leftDutyPercent = leftDutyPercent;
+    g_rightDutyPercent = rightDutyPercent;
+
+    if (leftDutyPercent == rightDutyPercent)
+    {
+        g_dutyPercent = leftDutyPercent;
+    }
+}
+
+uint32 MotorControl_GetLeftDutyPercent(void)
+{
+    return g_leftDutyPercent;
+}
+
+uint32 MotorControl_GetRightDutyPercent(void)
+{
+    return g_rightDutyPercent;
 }
 
 void MotorControl_Update(void)
@@ -327,13 +436,15 @@ void MotorControl_Update(void)
         case MOTOR_STATE_FORWARD:
             Motor_SetBrakeOffBoth();
             Motor_SetDirectionForwardBoth();
-            Motor_SendPwmOneCycleBoth(g_dutyPercent);
+            Motor_SendPwmOneCycleWheels(g_leftDutyPercent,
+                                        g_rightDutyPercent);
             break;
 
         case MOTOR_STATE_REVERSE:
             Motor_SetBrakeOffBoth();
             Motor_SetDirectionReverseBoth();
-            Motor_SendPwmOneCycleBoth(g_dutyPercent);
+            Motor_SendPwmOneCycleWheels(g_leftDutyPercent,
+                                        g_rightDutyPercent);
             break;
 
         case MOTOR_STATE_STOP:
