@@ -43,7 +43,7 @@
 #define LWIP_SOCKET             0                   /* Disable the Socket API                                               */
 #define SYS_LIGHTWEIGHT_PROT    0                   /* Disable inter-task protection                                        */
 
-#define LWIP_IGMP 0
+#define LWIP_IGMP 1
 #define LWIP_IPV4 1
 #define LWIP_UDP 1
 #define LWIP_MULTICAST_TX_OPTIONS 1

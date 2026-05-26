@@ -36,6 +36,7 @@
 #include "candrv.h"
 #include "soad.h"
 #include "com.h"
+#include "sd.h"
 
 IFX_ALIGN(4) IfxCpu_syncEvent cpuSyncEvent = 0;
 
@@ -67,6 +68,7 @@ void core0_main(void)
     initLwip(ethAddr);
     UdpInit();
     TcpInit();
+    Sd_Init();
 
     while(1)
     {
@@ -76,6 +78,7 @@ void core0_main(void)
 
         COM_TimeOut();
         COM_Tx_MainFunction();
+        Sd_MainFunction();
         SoAd_MainFunction();
 
     }

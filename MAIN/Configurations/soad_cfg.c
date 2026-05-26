@@ -3,6 +3,7 @@
 #include "doip.h"       // DoIP_ProcessRx 선언부
 #include "pdur_cfg.h"    // PDU ID (PDUR_UDP_CONTROL_ID 등)
 
+
 /* 🚀 래퍼 함수들 (이 파일 내부에서만 쓰이므로 static으로 은닉) */
 static void PduR_RouteRx_Control(uint8_t* payload, uint16_t length) {
     PduR_RouteRx(PDUR_UDP_CONTROL_ID, payload, length);
@@ -11,6 +12,7 @@ static void PduR_RouteRx_Control(uint8_t* payload, uint16_t length) {
 static void PduR_RouteRx_SomeIp(uint8_t* payload, uint16_t length) {
     PduR_RouteRx(PDUR_SOMEIP_ID, payload, length);
 }
+
 
 /* 🚀 SoAd 라우팅 테이블 (포트 번호 -> 호출할 함수 매핑) */
 const SoAd_RxPortMapType SoAd_RxPortTable[] = {

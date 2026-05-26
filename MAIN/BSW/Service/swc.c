@@ -122,6 +122,11 @@ void Callback_COM_PcTimeout(void)
     }
     COM_Set_CurMode(MODE_DEFAULT);
 }
+
+void SWC_BuzzerControlIndication(const uint8_t* msg)
+{
+    COM_Set_Collision_Warn(*msg);
+}
 /**
  * @brief 메인 루프에서 주기적으로 실행될 SWC 통합 제어 및 Fail-Safe 함수
  */

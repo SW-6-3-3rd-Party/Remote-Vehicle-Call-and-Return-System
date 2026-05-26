@@ -56,20 +56,36 @@ void SoAd_MainFunction(void)
     }
 }
 
+err_t SoAd_TransmitMulticast(const char* ipStr, uint16_t destPort, const void* data, uint16_t length)
+{
+    ip_addr_t multicast_ip;
+    ipaddr_aton(ipStr, &multicast_ip); // 문자열 IP를 lwIP 구조체로 변환
+
+    /* 하위 드라이버단을 통해 멀티캐스트 전송 */
+    return UdpSend(&multicast_ip, destPort, data, length);
+}
+
 void SoAd_IfTransmit(uint16_t port, uint8_t* payload, uint16_t length)
 {
+    //좀 꼬여서 수신 포트랑 송신 포트랑 둘 다 port로 써버림
+    /* TCP (DoIP) */
     if (port == 13400)
+    {
         TcpSend(payload, length);
+    }
+    /* UDP: PC 상태 보고 (5001 포트로 쏴라) */
     else if (port == 5001)
     {
-        UdpSendBack(port, payload, length);
+        UdpSendToPC(5001, payload, length);
     }
+    /* UDP: RPi 제어 (5002 포트로 쏴라) */
     else if (port == 5002)
     {
-        ip_addr_t ip;
-        IP4_ADDR(&ip, 192,168,20,2);
-        UdpSend(&ip, port, payload, length);
+        UdpSendToRPi(5002, payload, length);
     }
-
-
+    /* UDP: SOME/IP 응답 (30492 내 포트를 통해 PC에게 답장해라) */
+    else if (port == 30492)
+    {
+        UdpSendSomeIpResponse(payload, length);
+    }
 }

@@ -26,7 +26,14 @@
 /*********************************************************************************************************************/
 /*-------------------------------------------------Data Structures---------------------------------------------------*/
 /*********************************************************************************************************************/
- 
+ typedef struct
+{
+    uint8_t vehicle_id;
+    uint8_t buzzer_state;
+
+} Com_BuzzerControlType;
+
+
 /*********************************************************************************************************************/
 /*--------------------------------------------Private Variables/Constants--------------------------------------------*/
 /*********************************************************************************************************************/
@@ -41,9 +48,11 @@ void CAN_Body_processRx(uint8_t* payload, uint16_t length);
 uint8_t COM_Get_Ignition(void);
 uint8_t COM_Get_CurMode(void);
 uint8_t COM_Get_BodyAliveCnt(void);
+uint8_t COM_Get_Collision_Warn(void);
 void COM_Set_CurMode(uint8_t cur_mode);
 void COM_Set_Safety_Override(uint8_t safety_override);
 void COM_Set_Turn_Signal(uint8_t turn_signal);
+void COM_Set_Collision_Warn(uint8_t collision_warn);
 
 void COM_Tx_CtrAct_CAN(void);
 void COM_Tx_CtrBody_CAN(void);

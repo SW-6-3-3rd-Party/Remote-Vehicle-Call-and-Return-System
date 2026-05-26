@@ -22,7 +22,9 @@
 #define PDUR_TX_CAN_ACT_ID      0xA1
 #define PDUR_TX_CAN_BODY_ID     0xA2
 
-#define PDUR_TX_UDP_STAT_ID    0xB1
+#define PDUR_TX_UDP_STAT_ID     0xB1
+
+#define PDUR_TX_UDP_SOMEIP      0xC1
 
 /* 2. 상위 계층으로 데이터를 올릴 콜백 함수 포인터 타입 정의 */
 typedef void (*PduR_RxIndicationFp)(uint8_t* payload, uint16_t length);

@@ -21,6 +21,10 @@
 #define UDP_TIMEOUT_THRESHOLD_MS 500  /* 500ms 통신 두절 시 타임아웃 */
 #define ACT_TIMEOUT_THRESHOLD_MS 500
 #define BODY_TIMEOUT_THRESHOLD_MS 500
+
+#define SOMEIP_SERVICE_ID    0x2001
+#define SOMEIP_METHOD_ID     0x0001
+
 /*********************************************************************************************************************/
 /*-------------------------------------------------Global variables--------------------------------------------------*/
 /*********************************************************************************************************************/
@@ -95,7 +99,7 @@ static uint32_t Last_Body_RxTime = 0;
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
-
+static void SomeIp_SendResponse(uint8_t* rxPacket, uint8_t buzzerState);
 /*********************************************************************************************************************/
 /*---------------------------------------------Function Implementations----------------------------------------------*/
 /*********************************************************************************************************************/
@@ -118,7 +122,50 @@ void UDP_Ctr_ProcessRx(uint8_t* payload, uint16_t length)
 
 void SomeIp_ProcessRx(uint8_t* payload, uint16_t length)
 {
-    //swc로 전달
+    if (length < 18)
+            return;
+
+    /* =========================
+     * SOME/IP Header Parsing
+     * ========================= */
+
+    uint16_t serviceId =
+        ((uint16_t)payload[0] << 8) |
+         payload[1];
+
+    uint16_t methodId =
+        ((uint16_t)payload[2] << 8) |
+         payload[3];
+
+    if (serviceId != SOMEIP_SERVICE_ID)
+        return;
+
+    if (methodId != SOMEIP_METHOD_ID)
+        return;
+
+    /* =========================
+     * Payload Deserialize
+     * ========================= */
+
+    Com_BuzzerControlType msg;
+
+    msg.vehicle_id  = payload[16];
+    msg.buzzer_state = payload[17];
+
+    /* =========================
+     * SWC 처리
+     * ========================= */
+
+    SWC_BuzzerControlIndication(&msg.buzzer_state);
+
+    /* =========================
+     * Response 송신
+     * ========================= */
+
+    SomeIp_SendResponse(
+        payload,
+        COM_Collision_Warn
+    );
 }
 
 void CAN_Stat_processRx(uint8_t* payload, uint16_t length)
@@ -142,9 +189,11 @@ void CAN_Body_processRx(uint8_t* payload, uint16_t length)
 uint8_t COM_Get_Ignition(void) { return COM_RxBuf_UDP_Ctr.ignition; }
 uint8_t COM_Get_CurMode(void) { return COM_Cur_Mode; }
 uint8_t COM_Get_BodyAliveCnt(void) { return COM_RxBuf_CAN_Body.alive_cnt; }
+uint8_t COM_Get_Collision_Warn(void) { return COM_Collision_Warn; }
 void COM_Set_CurMode(uint8_t cur_mode) { COM_Cur_Mode = cur_mode; }
 void COM_Set_Safety_Override(uint8_t safety_override) { COM_Safety_Override = safety_override; }
 void COM_Set_Turn_Signal(uint8_t turn_signal) { COM_RxBuf_UDP_Ctr.turn_signal = turn_signal; }
+void COM_Set_Collision_Warn(uint8_t collision_warn) { COM_Collision_Warn = collision_warn; }
 
 void COM_Tx_CtrAct_CAN(void)
 {
@@ -232,4 +281,63 @@ void COM_TimeOut(void)
     {
         SWC_Callback_BodyCommloss();
     }
+}
+
+static void SomeIp_SendResponse(uint8_t* rxPacket,uint8_t buzzerState)
+{
+    uint8_t tx[32];
+
+    uint8_t* p = tx;
+
+    /* =========================
+     * SOME/IP Header
+     * ========================= */
+
+    *((uint16_t*)p) = lwip_htons(SOMEIP_SERVICE_ID);
+    p += 2;
+
+    *((uint16_t*)p) = lwip_htons(SOMEIP_METHOD_ID);
+    p += 2;
+
+    /*
+     * Length:
+     * Request ID ~ payload 끝
+     *
+     * 8 bytes header tail
+     * 2 bytes payload
+     */
+    *((uint32_t*)p) = lwip_htonl(10);
+    p += 4;
+
+    /*
+     * Client ID / Session ID
+     * request 그대로 반사
+     */
+    memcpy(p, &rxPacket[8], 4);
+    p += 4;
+
+    /* Protocol Version */
+    *p++ = 0x01;
+
+    /* Interface Version */
+    *p++ = 0x01;
+
+    /* Message Type = Response */
+    *p++ = 0x80;
+
+    /* Return Code */
+    *p++ = 0x00;
+
+    /* =========================
+     * Payload
+     * ========================= */
+
+    *p++ = 1;
+    *p++ = buzzerState;
+
+    /* =========================
+     * 송신
+     * ========================= */
+
+    PduR_RouteTx(PDUR_TX_UDP_SOMEIP, tx, (uint16_t)(p - tx));
 }

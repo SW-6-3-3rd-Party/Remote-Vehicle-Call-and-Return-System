@@ -53,6 +53,11 @@ static void UDP_Stat_Tx(uint8_t* payload, uint16_t length)
     SoAd_IfTransmit(5001, payload, length);
 }
 
+static void UDP_SOMEIP_Tx(uint8_t* payload, uint16_t length)
+{
+    SoAd_IfTransmit(30492, payload, length);
+}
+
 /* 라우팅 테이블 정의 */
 const PduR_Rx_RoutingPathType PduR_Rx_RoutingTable[] = {
     { PDUR_UDP_CONTROL_ID,      UDP_Ctr_ProcessRx        },
@@ -71,7 +76,8 @@ const PduR_Rx_RoutingPathType PduR_Rx_RoutingTable[] = {
 const PduR_Tx_RoutingPathType PduR_Tx_RoutingTable[] = {
     { PDUR_TX_CAN_ACT_ID,       CAN_Ctr_ActTx            },
     { PDUR_TX_CAN_BODY_ID,      CAN_Ctr_BodyTx           },
-    { PDUR_TX_UDP_STAT_ID,      UDP_Stat_Tx              }
+    { PDUR_TX_UDP_STAT_ID,      UDP_Stat_Tx              },
+    { PDUR_TX_UDP_SOMEIP,       UDP_SOMEIP_Tx            }
 };
 
 /* 테이블의 크기 계산 */

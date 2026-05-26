@@ -70,6 +70,7 @@ uint8_t SWC_Get_DtcStatus_ActEcu(void);
 uint8_t SWC_Get_DtcStatus_BodyEcu(void);
 uint8_t SWC_Get_DtcStatus_Pc(void);
 
+void SWC_BuzzerControlIndication(const uint8_t* msg);
 
 void Callback_COM_PcTimeout(void);
 //void SWC_Control_MainFunction(void);

@@ -32,10 +32,12 @@
 void UdpInit(void);
 
 /* 지정한 IP/포트로 UDP 송신 */
+err_t UdpSendToPC(u16_t dst_port, const void *data, u16_t len);
+err_t UdpSendToRPi(u16_t dst_port, const void *data, u16_t len);
+err_t UdpSendSomeIpResponse(const void *data, u16_t len);
 err_t UdpSend(const ip_addr_t *dst_addr, u16_t dst_port,
               const void *data, u16_t len);
-err_t UdpSendBack(u16_t dst_port,
-              const void *data, u16_t len);
+
 
 /* 브로드캐스트로 송신 (편의 함수) */
 err_t UdpSendBroadcast(u16_t dst_port, const void *data, u16_t len);
