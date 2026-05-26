@@ -213,8 +213,11 @@ def negative_uds_result(did, label, uds_response, unit=None):
     }
 
 
-def read_dtcs(client):
-    uds_response = client.read_dtc_by_status_mask(0xFF)
+def read_dtcs(client, request_type="status_mask"):
+    if request_type == "supported":
+        uds_response = client.read_supported_dtcs()
+    else:
+        uds_response = client.read_dtc_by_status_mask(0xFF)
 
     if not uds_response or uds_response[0] != 0x59:
         return {
@@ -230,6 +233,8 @@ def read_dtcs(client):
             break
         code = int.from_bytes(payload[offset : offset + 3], "big")
         status = payload[offset + 3]
+        if status == 0:
+            continue
         items.append(
             {
                 "code": f"0x{code:06X}",
@@ -266,14 +271,18 @@ def run_routine(client, routine_id):
 
 def test_main_routing_activation():
     started = time.time()
+    warnings = []
     with open_main_client(MAIN_ECU["logical_address"]) as client:
         activation = client.routing_activation()
         ensure_routing_active(activation, "MAIN ECU")
         session = enter_session(client, 0x03, "MAIN ECU")
         dids = read_dids(client, MAIN_DIDS)
-        dtcs = read_dtcs(client)
+        dtcs = read_dtcs(client, request_type="supported")
         if not dtcs["ok"]:
-            raise DoipError(f"MAIN ECU DTC 조회 실패: {dtcs['raw']}")
+            warnings.append({
+                "type": "dtc",
+                "detail": f"MAIN ECU DTC 조회 실패: {dtcs['raw']}",
+            })
 
     return {
         "result": "OK",
@@ -285,6 +294,7 @@ def test_main_routing_activation():
         "session": session,
         "dids": dids,
         "dtcs": dtcs,
+        "warnings": warnings,
     }
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pc_backend.diagnostics import MAIN_DIDS, read_did
+from pc_backend.diagnostics import MAIN_DIDS, read_did, read_dtcs
 from pc_backend.doip import DoipClient, DoipError, hex_bytes
 
 
@@ -142,8 +142,13 @@ def main():
                     failures += 1
 
             print_step("DTC")
-            dtc = client.read_dtc_by_status_mask(0xFF)
-            print(f"raw: {hex_bytes(dtc)}")
+            dtc = read_dtcs(client, request_type="supported")
+            print(f"raw: {dtc['raw']}")
+            for item in dtc["items"]:
+                print(
+                    f"{item['code']}: {item['state']}, "
+                    f"status={item['status']}, {item['description']}"
+                )
 
             if failures:
                 print()

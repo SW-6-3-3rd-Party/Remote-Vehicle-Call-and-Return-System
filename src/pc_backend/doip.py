@@ -120,6 +120,20 @@ class DoipClient:
         response = self._require_uds().get_dtc_by_status_mask(status_mask)
         return self._payload(response)
 
+    def read_supported_dtcs(self):
+        try:
+            from udsoncan import Request
+            from udsoncan.services import ReadDTCInformation
+        except ImportError as exc:
+            raise DoipError(
+                "UDS 라이브러리가 설치되어 있지 않습니다. "
+                "`pip install udsoncan` 후 다시 실행하세요."
+            ) from exc
+
+        request = Request(ReadDTCInformation, subfunction=0x0A)
+        response = self._require_uds().send_request(request)
+        return self._payload(response)
+
     def clear_dtc(self, group=0xFFFFFF):
         response = self._require_uds().clear_dtc(group)
         return self._payload(response)
