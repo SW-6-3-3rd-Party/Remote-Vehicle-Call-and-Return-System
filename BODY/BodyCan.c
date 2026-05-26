@@ -63,6 +63,7 @@
 
 #define BODY_UDS_DTC_STATUS_AVAILABILITY_MASK (0x01U)
 #define BODY_UDS_DTC_STATUS_TEST_FAILED       (0x01U)
+#define BODY_UDS_READ_DTC_ALL_SUBFUNCTION     (0x0AU)
 #define BODY_UDS_DTC_ULTRASONIC_BYTE0         (0xC2U)
 #define BODY_UDS_DTC_ULTRASONIC_BYTE1         (0x01U)
 #define BODY_UDS_DTC_ULTRASONIC_BYTE2         (0x00U)
@@ -511,24 +512,22 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
 {
     uint8 response[BODY_UDS_SF_MAX_PAYLOAD_BYTES];
     uint8 index;
-    uint8 statusMask;
     uint8 faultMask;
 
-    if (payloadLength != 3U)
+    if (payloadLength != 2U)
     {
         BodyCan_SendUdsNegativeResponse(BODY_UDS_SID_READ_DTC,
                                         BODY_UDS_NRC_INCORRECT_LENGTH);
         return;
     }
 
-    if (payload[1] != 0x02U)
+    if (payload[1] != BODY_UDS_READ_DTC_ALL_SUBFUNCTION)
     {
         BodyCan_SendUdsNegativeResponse(BODY_UDS_SID_READ_DTC,
                                         BODY_UDS_NRC_SUBFUNCTION_UNSUPPORTED);
         return;
     }
 
-    statusMask = payload[2];
     faultMask = BodyControl_GetDiagFaultMask();
 
     for (index = 0U; index < BODY_UDS_SF_MAX_PAYLOAD_BYTES; index++)
@@ -537,11 +536,10 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
     }
 
     response[0] = BODY_UDS_SID_READ_DTC + BODY_UDS_POSITIVE_RESPONSE_OFFSET;
-    response[1] = 0x02U;
+    response[1] = BODY_UDS_READ_DTC_ALL_SUBFUNCTION;
     response[2] = BODY_UDS_DTC_STATUS_AVAILABILITY_MASK;
 
-    if (((faultMask & BODY_DIAG_ULTRASONIC_BIT) != 0U) &&
-        ((statusMask & BODY_UDS_DTC_STATUS_TEST_FAILED) != 0U))
+    if ((faultMask & BODY_DIAG_ULTRASONIC_BIT) != 0U)
     {
         response[3] = BODY_UDS_DTC_ULTRASONIC_BYTE0;
         response[4] = BODY_UDS_DTC_ULTRASONIC_BYTE1;
@@ -651,10 +649,8 @@ static void BodyCan_HandleUdsRoutineControl(const uint8 payload[BODY_UDS_SF_MAX_
         response[4] = (ultrasonicOk != FALSE) ?
                       BODY_UDS_ROUTINE_RESULT_OK :
                       BODY_UDS_ROUTINE_RESULT_TIMEOUT;
-        response[5] = (uint8)((distanceMm >> 8U) & 0xFFU);
-        response[6] = (uint8)(distanceMm & 0xFFU);
 
-        BodyCan_SendUdsPositiveResponse(response, 7U);
+        BodyCan_SendUdsPositiveResponse(response, 5U);
         return;
     }
 

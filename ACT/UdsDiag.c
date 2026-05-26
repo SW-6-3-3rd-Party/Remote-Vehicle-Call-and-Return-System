@@ -23,7 +23,7 @@
  *   0x0101 = Steering angle deg, int16
  *
  * 0x19 ReadDTCInformation
- *   0x02 ReportDTCByStatusMask
+ *   0x0A ReportDTC
  *   CAN FD Single Frame response can include both active DTCs.
  *
  * 0x14 ClearDiagnosticInformation
@@ -78,6 +78,8 @@ static uint8 g_diagSession = SESSION_DEFAULT;
  * ========================= */
 #define DTC_ENCODER_NO_SIGNAL                (0xC10000UL)
 #define DTC_STEERING_MISMATCH                (0xC10100UL)
+
+#define DTC_REPORT_SUBFUNCTION               (0x0AU)
 
 /*
  * UDS DTC status bit demo:
@@ -454,32 +456,29 @@ static uint8 UdsDiag_AppendDtc(uint8* payload,
 
 static void UdsDiag_HandleReadDTC(const uint8* uds, uint8 len)
 {
-    uint8 mask;
     uint8 payload[UDS_SINGLE_FRAME_MAX_PAYLOAD];
     uint8 payloadLen;
 
-    if (len != 3U)
+    if (len != 2U)
     {
         UdsDiag_SendNegativeResponse(SID_READ_DTC_INFORMATION,
                                      NRC_INCORRECT_MESSAGE_LENGTH);
         return;
     }
 
-    if (uds[1] != 0x02U)
+    if (uds[1] != DTC_REPORT_SUBFUNCTION)
     {
         UdsDiag_SendNegativeResponse(SID_READ_DTC_INFORMATION,
                                      NRC_SUBFUNCTION_NOT_SUPPORTED);
         return;
     }
 
-    mask = uds[2];
-
     payload[0] = SID_READ_DTC_INFORMATION + POS_RESP_OFFSET;
-    payload[1] = 0x02U;
+    payload[1] = DTC_REPORT_SUBFUNCTION;
     payload[2] = DTC_STATUS_AVAILABILITY_MASK;
     payloadLen = 3U;
 
-    if ((g_dtcC100Status & mask) != 0U)
+    if (g_dtcC100Status != 0U)
     {
         payloadLen = UdsDiag_AppendDtc(payload,
                                        payloadLen,
@@ -487,7 +486,7 @@ static void UdsDiag_HandleReadDTC(const uint8* uds, uint8 len)
                                        g_dtcC100Status);
     }
 
-    if ((g_dtcC101Status & mask) != 0U)
+    if (g_dtcC101Status != 0U)
     {
         payloadLen = UdsDiag_AppendDtc(payload,
                                        payloadLen,
