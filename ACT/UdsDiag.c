@@ -24,10 +24,10 @@
  *
  * 0x19 ReadDTCInformation
  *   0x0A ReportDTC
- *   CAN FD Single Frame response can include both active DTCs.
+ *   Response includes every supported DTC and its full status byte.
  *
  * 0x14 ClearDiagnosticInformation
- *   0xFFFFFF = all clear
+ *   0xFFFFFF = clear stored/history status bit
  *
  * 0x31 RoutineControl
  *   0x0100 = Motor test
@@ -63,8 +63,8 @@
  * ========================= */
 #define SESSION_DEFAULT                      (0x01U)
 #define SESSION_EXTENDED                     (0x03U)
-#define SESSION_P2_SERVER_MAX_H              (0x0BU)
-#define SESSION_P2_SERVER_MAX_L              (0xB8U)
+#define SESSION_P2_SERVER_MAX_H              (0x27U)
+#define SESSION_P2_SERVER_MAX_L              (0x10U)
 #define SESSION_P2_EXT_SERVER_MAX_H          (0x03U)
 #define SESSION_P2_EXT_SERVER_MAX_L          (0xE8U)
 
@@ -87,17 +87,27 @@ static uint8 g_diagSession = SESSION_DEFAULT;
 
 /*
  * Custom DTC status:
- * 0 = not occurred, 1 = occurred
+ * bit0 = current fault
+ * bit3 = stored/history fault
  */
-#define DTC_STATUS_NOT_OCCURRED              (0x00U)
-#define DTC_STATUS_OCCURRED                  (0x01U)
-#define DTC_STATUS_AVAILABILITY_MASK         (0x01U)
+#define DTC_STATUS_INIT                      (0x00U)
+#define DTC_STATUS_CURRENT_BIT               (0x01U)
+#define DTC_STATUS_HISTORY_BIT               (0x08U)
+#define DTC_STATUS_AVAILABILITY_MASK         (DTC_STATUS_CURRENT_BIT | DTC_STATUS_HISTORY_BIT)
 
-static uint8 g_dtcC100Status = DTC_STATUS_NOT_OCCURRED;
-static uint8 g_dtcC101Status = DTC_STATUS_NOT_OCCURRED;
+#define DTC_MONITOR_PERIOD_MS                (3000U)
+#define DTC_CONFIRM_FAIL_COUNT               (3U)
+#define DTC_ENCODER_NO_SIGNAL_MS             (2000U)
+#define DTC_STEERING_MISMATCH_MS             (1000U)
+
+static uint8 g_dtcC100Status = DTC_STATUS_INIT;
+static uint8 g_dtcC101Status = DTC_STATUS_INIT;
 
 static uint32 g_dtcEncoderNoSignalTimerMs = 0U;
 static uint32 g_dtcSteeringMismatchTimerMs = 0U;
+static uint32 g_dtcMonitorPeriodTimerMs = 0U;
+static uint8 g_dtcC100ConsecutiveFailCount = 0U;
+static uint8 g_dtcC101ConsecutiveFailCount = 0U;
 
 /* =========================
  * Routine
@@ -516,13 +526,13 @@ static void UdsDiag_HandleClearDTC(const uint8* uds, uint8 len)
         return;
     }
 
-    g_dtcC100Status = DTC_STATUS_NOT_OCCURRED;
-    g_dtcC101Status = DTC_STATUS_NOT_OCCURRED;
-    g_dtcEncoderNoSignalTimerMs = 0U;
-    g_dtcSteeringMismatchTimerMs = 0U;
+    g_dtcC100Status &= (uint8)(~DTC_STATUS_HISTORY_BIT);
+    g_dtcC101Status &= (uint8)(~DTC_STATUS_HISTORY_BIT);
+    g_dtcC100ConsecutiveFailCount = 0U;
+    g_dtcC101ConsecutiveFailCount = 0U;
 
-    g_debugUdsDtcC100 = 0U;
-    g_debugUdsDtcC101 = 0U;
+    g_debugUdsDtcC100 = g_dtcC100Status;
+    g_debugUdsDtcC101 = g_dtcC101Status;
 
     payload[0] = SID_CLEAR_DIAGNOSTIC_INFORMATION + POS_RESP_OFFSET;
 
@@ -685,6 +695,31 @@ static void UdsDiag_ProcessRequest(const uint8 data[8])
 /* ======================================================
  * DTC Monitor
  * ====================================================== */
+static void UdsDiag_UpdateOneDtcStatus(uint8* status,
+                                       uint8* consecutiveFailCount,
+                                       boolean faultActive)
+{
+    if (faultActive == TRUE)
+    {
+        *status |= DTC_STATUS_CURRENT_BIT;
+
+        if (*consecutiveFailCount < DTC_CONFIRM_FAIL_COUNT)
+        {
+            (*consecutiveFailCount)++;
+        }
+
+        if (*consecutiveFailCount >= DTC_CONFIRM_FAIL_COUNT)
+        {
+            *status |= DTC_STATUS_HISTORY_BIT;
+        }
+    }
+    else
+    {
+        *status = (uint8)(*status & (uint8)(~DTC_STATUS_CURRENT_BIT));
+        *consecutiveFailCount = 0U;
+    }
+}
+
 static void UdsDiag_UpdateDtcMonitor1ms(void)
 {
     MotorState motorState;
@@ -692,6 +727,8 @@ static void UdsDiag_UpdateDtcMonitor1ms(void)
     sint16 targetAngle;
     sint16 actualAngle;
     uint32 diff;
+    boolean encoderFaultActive;
+    boolean steeringFaultActive;
 
     /*
      * DTC 0xC10000
@@ -705,14 +742,9 @@ static void UdsDiag_UpdateDtcMonitor1ms(void)
          (motorState == MOTOR_STATE_REVERSE)) &&
         (pulsePerSecond == 0U))
     {
-        if (g_dtcEncoderNoSignalTimerMs < 2000U)
+        if (g_dtcEncoderNoSignalTimerMs < DTC_ENCODER_NO_SIGNAL_MS)
         {
             g_dtcEncoderNoSignalTimerMs++;
-        }
-
-        if (g_dtcEncoderNoSignalTimerMs >= 2000U)
-        {
-            g_dtcC100Status = DTC_STATUS_OCCURRED;
         }
     }
     else
@@ -731,19 +763,32 @@ static void UdsDiag_UpdateDtcMonitor1ms(void)
 
     if (diff > 10U)
     {
-        if (g_dtcSteeringMismatchTimerMs < 1000U)
+        if (g_dtcSteeringMismatchTimerMs < DTC_STEERING_MISMATCH_MS)
         {
             g_dtcSteeringMismatchTimerMs++;
-        }
-
-        if (g_dtcSteeringMismatchTimerMs >= 1000U)
-        {
-            g_dtcC101Status = DTC_STATUS_OCCURRED;
         }
     }
     else
     {
         g_dtcSteeringMismatchTimerMs = 0U;
+    }
+
+    g_dtcMonitorPeriodTimerMs++;
+    if (g_dtcMonitorPeriodTimerMs >= DTC_MONITOR_PERIOD_MS)
+    {
+        g_dtcMonitorPeriodTimerMs = 0U;
+
+        encoderFaultActive =
+            (g_dtcEncoderNoSignalTimerMs >= DTC_ENCODER_NO_SIGNAL_MS) ? TRUE : FALSE;
+        steeringFaultActive =
+            (g_dtcSteeringMismatchTimerMs >= DTC_STEERING_MISMATCH_MS) ? TRUE : FALSE;
+
+        UdsDiag_UpdateOneDtcStatus(&g_dtcC100Status,
+                                   &g_dtcC100ConsecutiveFailCount,
+                                   encoderFaultActive);
+        UdsDiag_UpdateOneDtcStatus(&g_dtcC101Status,
+                                   &g_dtcC101ConsecutiveFailCount,
+                                   steeringFaultActive);
     }
 
     g_debugUdsDtcC100 = g_dtcC100Status;
@@ -855,10 +900,13 @@ void UdsDiag_Init(void)
 
     g_diagSession = SESSION_DEFAULT;
 
-    g_dtcC100Status = DTC_STATUS_NOT_OCCURRED;
-    g_dtcC101Status = DTC_STATUS_NOT_OCCURRED;
+    g_dtcC100Status = DTC_STATUS_INIT;
+    g_dtcC101Status = DTC_STATUS_INIT;
     g_dtcEncoderNoSignalTimerMs = 0U;
     g_dtcSteeringMismatchTimerMs = 0U;
+    g_dtcMonitorPeriodTimerMs = 0U;
+    g_dtcC100ConsecutiveFailCount = 0U;
+    g_dtcC101ConsecutiveFailCount = 0U;
 
     g_routineState = UDS_ROUTINE_NONE;
     g_routineTimerMs = 0U;

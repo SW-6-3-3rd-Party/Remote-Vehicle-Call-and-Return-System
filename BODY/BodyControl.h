@@ -78,6 +78,8 @@ uint8 BodyControl_GetDiagFeedbackMask(void);
 uint16 BodyControl_GetUltrasonicDistanceCm(void);
 boolean BodyControl_IsUltrasonicDistanceValid(void);
 uint8 BodyControl_GetCollisionWarningLevel(void);
+uint8 BodyControl_GetUltrasonicDtcStatus(void);
+void BodyControl_ClearDtcHistory(void);
 
 void BodyControl_RunBuzzerDiagnosticRoutine(void);
 void BodyControl_RunLedDiagnosticRoutine(void);
@@ -97,5 +99,7 @@ extern volatile uint8 g_debugBodyUltrasonicDistanceValid;
 extern volatile uint8 g_debugBodyCollisionWarningLevel;
 extern volatile uint32 g_debugBodyUltrasonicMeasureCount;
 extern volatile uint32 g_debugBodyUltrasonicTimeoutCount;
+extern volatile uint8 g_debugBodyUltrasonicDtcStatus;
+extern volatile uint8 g_debugBodyUltrasonicDtcFailCount;
 
 #endif /* BODY_CONTROL_H_ */

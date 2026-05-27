@@ -506,8 +506,7 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
 {
     uint8 response[BODY_UDS_SF_MAX_PAYLOAD_BYTES];
     uint8 index;
-    uint16 distanceMm;
-    boolean ultrasonicOk;
+    uint8 dtcStatus;
 
     if (payloadLength != 2U)
     {
@@ -523,7 +522,7 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
         return;
     }
 
-    ultrasonicOk = BodyControl_RunUltrasonicDiagnosticRoutine(&distanceMm);
+    dtcStatus = BodyControl_GetUltrasonicDtcStatus();
 
     for (index = 0U; index < BODY_UDS_SF_MAX_PAYLOAD_BYTES; index++)
     {
@@ -537,14 +536,7 @@ static void BodyCan_HandleUdsReadDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOAD
     response[4] = BODY_UDS_DTC_ULTRASONIC_BYTE1;
     response[5] = BODY_UDS_DTC_ULTRASONIC_BYTE2;
 
-    if (ultrasonicOk == FALSE)
-    {
-        response[6] = BODY_UDS_DTC_STATUS_TEST_FAILED;
-    }
-    else
-    {
-        response[6] = 0U;
-    }
+    response[6] = dtcStatus;
 
     BodyCan_SendUdsPositiveResponse(response, 7U);
 }
@@ -571,7 +563,7 @@ static void BodyCan_HandleUdsClearDtc(const uint8 payload[BODY_UDS_SF_MAX_PAYLOA
         return;
     }
 
-    BodyControl_ClearDiagFaults();
+    BodyControl_ClearDtcHistory();
 
     for (index = 0U; index < BODY_UDS_SF_MAX_PAYLOAD_BYTES; index++)
     {

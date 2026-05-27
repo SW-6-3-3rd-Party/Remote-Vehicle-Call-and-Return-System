@@ -65,6 +65,13 @@
 #define BODY_ULTRASONIC_ECHO_IDLE_TIMEOUT_US  (300U)
 #define BODY_ULTRASONIC_NO_OBJECT_CM          (400U)
 
+#define BODY_DTC_CHECK_PERIOD_MS              (3000U)
+#define BODY_DTC_CONFIRM_FAIL_COUNT           (3U)
+#define BODY_DTC_STATUS_CURRENT_BIT           (0x01U)
+#define BODY_DTC_STATUS_HISTORY_BIT           (0x08U)
+#define BODY_DIAG_DANGER_BLINK_HALF_PERIOD_MS (250U)
+#define BODY_DIAG_DANGER_BLINK_CYCLES         (3U)
+
 /* =========================
  * RGB Headlamp Pins
  * ========================= */
@@ -220,6 +227,13 @@ static uint32 g_collisionButtonPressedEventCount = 0U;
 static uint8 g_diagFaultMask = 0U;
 static uint8 g_diagCommandMask = 0U;
 static uint8 g_diagFeedbackMask = 0U;
+static uint8 g_ultrasonicDtcStatus = 0U;
+static uint8 g_ultrasonicDtcConsecutiveFailCount = 0U;
+static uint32 g_dtcCheckTimerMs = 0U;
+static boolean g_diagDangerBlinkActive = FALSE;
+static boolean g_diagDangerBlinkOutputOn = FALSE;
+static uint8 g_diagDangerBlinkToggleCount = 0U;
+static uint32 g_diagDangerBlinkTimerMs = 0U;
 
 static uint32 g_diagBrakeLowTimerMs = 0U;
 static uint32 g_diagHeadLowTimerMs = 0U;
@@ -240,10 +254,14 @@ volatile uint8 g_debugBodyUltrasonicDistanceValid = 0U;
 volatile uint8 g_debugBodyCollisionWarningLevel = 0U;
 volatile uint32 g_debugBodyUltrasonicMeasureCount = 0U;
 volatile uint32 g_debugBodyUltrasonicTimeoutCount = 0U;
+volatile uint8 g_debugBodyUltrasonicDtcStatus = 0U;
+volatile uint8 g_debugBodyUltrasonicDtcFailCount = 0U;
 
 static void BodyControl_WriteBuzzerPin(boolean on);
 static void BodyControl_BuzzerOff(void);
 static void BodyControl_UpdateDiagDangerLed(void);
+static void BodyControl_StartDiagDangerLedBlink(void);
+static void BodyControl_UpdateDiagDangerLedBlink1ms(void);
 static void BodyControl_WriteNormalLedPin(Ifx_P* port, uint8 pin, boolean on);
 static void BodyControl_WriteHeadlamp(boolean on);
 static void BodyControl_WriteBrakePin(boolean on);
@@ -794,9 +812,66 @@ static void BodyControl_WriteDiagDangerLed(boolean on)
                                   on);
 }
 
+static boolean BodyControl_IsDiagDangerLedSteadyOn(void)
+{
+    uint8 nonUltrasonicFaultMask;
+
+    nonUltrasonicFaultMask = g_diagFaultMask & (uint8)(~BODY_DIAG_ULTRASONIC_BIT);
+
+    return ((nonUltrasonicFaultMask != 0U) ||
+            ((g_ultrasonicDtcStatus & BODY_DTC_STATUS_CURRENT_BIT) != 0U)) ? TRUE : FALSE;
+}
+
 static void BodyControl_UpdateDiagDangerLed(void)
 {
-    BodyControl_WriteDiagDangerLed((g_diagFaultMask != 0U) ? TRUE : FALSE);
+    if (g_diagDangerBlinkActive != FALSE)
+    {
+        return;
+    }
+
+    BodyControl_WriteDiagDangerLed(BodyControl_IsDiagDangerLedSteadyOn());
+}
+
+static void BodyControl_StartDiagDangerLedBlink(void)
+{
+    g_diagDangerBlinkActive = TRUE;
+    g_diagDangerBlinkOutputOn = TRUE;
+    g_diagDangerBlinkToggleCount = 0U;
+    g_diagDangerBlinkTimerMs = 0U;
+
+    BodyControl_WriteDiagDangerLed(TRUE);
+}
+
+static void BodyControl_UpdateDiagDangerLedBlink1ms(void)
+{
+    uint8 maxToggleCount;
+
+    if (g_diagDangerBlinkActive == FALSE)
+    {
+        return;
+    }
+
+    if (g_diagDangerBlinkTimerMs < BODY_DIAG_DANGER_BLINK_HALF_PERIOD_MS)
+    {
+        g_diagDangerBlinkTimerMs++;
+        return;
+    }
+
+    g_diagDangerBlinkTimerMs = 0U;
+    g_diagDangerBlinkToggleCount++;
+    maxToggleCount = (uint8)(BODY_DIAG_DANGER_BLINK_CYCLES * 2U);
+
+    if (g_diagDangerBlinkToggleCount >= maxToggleCount)
+    {
+        g_diagDangerBlinkActive = FALSE;
+        g_diagDangerBlinkOutputOn = FALSE;
+        g_diagDangerBlinkToggleCount = 0U;
+        BodyControl_UpdateDiagDangerLed();
+        return;
+    }
+
+    g_diagDangerBlinkOutputOn = (g_diagDangerBlinkOutputOn == FALSE) ? TRUE : FALSE;
+    BodyControl_WriteDiagDangerLed(g_diagDangerBlinkOutputOn);
 }
 
 static void BodyControl_RunStartupSelfDiagnosis(void)
@@ -1542,6 +1617,13 @@ void BodyControl_Init(void)
     g_diagFaultMask = 0U;
     g_diagCommandMask = 0U;
     g_diagFeedbackMask = 0U;
+    g_ultrasonicDtcStatus = 0U;
+    g_ultrasonicDtcConsecutiveFailCount = 0U;
+    g_dtcCheckTimerMs = 0U;
+    g_diagDangerBlinkActive = FALSE;
+    g_diagDangerBlinkOutputOn = FALSE;
+    g_diagDangerBlinkToggleCount = 0U;
+    g_diagDangerBlinkTimerMs = 0U;
 
     g_diagBrakeLowTimerMs = 0U;
     g_diagHeadLowTimerMs = 0U;
@@ -1564,6 +1646,8 @@ void BodyControl_Init(void)
     g_debugBodyCollisionWarningLevel = 0U;
     g_debugBodyUltrasonicMeasureCount = 0U;
     g_debugBodyUltrasonicTimeoutCount = 0U;
+    g_debugBodyUltrasonicDtcStatus = 0U;
+    g_debugBodyUltrasonicDtcFailCount = 0U;
 
     BodyControl_RunStartupSelfDiagnosis();
 
@@ -1893,6 +1977,98 @@ boolean BodyControl_RunUltrasonicDiagnosticRoutine(uint16* distanceMm)
     return TRUE;
 }
 
+static void BodyControl_UpdateUltrasonicDtcDebug(void)
+{
+    g_debugBodyUltrasonicDtcStatus = g_ultrasonicDtcStatus;
+    g_debugBodyUltrasonicDtcFailCount = g_ultrasonicDtcConsecutiveFailCount;
+}
+
+static void BodyControl_SyncUltrasonicDtcFaultMask(void)
+{
+    if ((g_ultrasonicDtcStatus & BODY_DTC_STATUS_CURRENT_BIT) != 0U)
+    {
+        g_diagFaultMask |= BODY_DIAG_ULTRASONIC_BIT;
+    }
+    else
+    {
+        g_diagFaultMask &= (uint8)(~BODY_DIAG_ULTRASONIC_BIT);
+    }
+
+    g_debugBodyDiagFaultMask = g_diagFaultMask;
+    BodyControl_UpdateDiagDangerLed();
+}
+
+static void BodyControl_UpdateUltrasonicDtcStatus(boolean failed)
+{
+    uint8 previousStatus;
+
+    previousStatus = g_ultrasonicDtcStatus;
+
+    if (failed != FALSE)
+    {
+        g_ultrasonicDtcStatus |= BODY_DTC_STATUS_CURRENT_BIT;
+
+        if (g_ultrasonicDtcConsecutiveFailCount < BODY_DTC_CONFIRM_FAIL_COUNT)
+        {
+            g_ultrasonicDtcConsecutiveFailCount++;
+        }
+
+        if (g_ultrasonicDtcConsecutiveFailCount >= BODY_DTC_CONFIRM_FAIL_COUNT)
+        {
+            g_ultrasonicDtcStatus |= BODY_DTC_STATUS_HISTORY_BIT;
+        }
+    }
+    else
+    {
+        g_ultrasonicDtcStatus &= (uint8)(~BODY_DTC_STATUS_CURRENT_BIT);
+        g_ultrasonicDtcConsecutiveFailCount = 0U;
+    }
+
+    if (((previousStatus & BODY_DTC_STATUS_HISTORY_BIT) == 0U) &&
+        ((g_ultrasonicDtcStatus & BODY_DTC_STATUS_HISTORY_BIT) != 0U))
+    {
+        BodyControl_StartDiagDangerLedBlink();
+    }
+
+    BodyControl_UpdateUltrasonicDtcDebug();
+    BodyControl_SyncUltrasonicDtcFaultMask();
+}
+
+static void BodyControl_UpdateDtcStatus1ms(void)
+{
+    uint16 distanceMm;
+    boolean ultrasonicOk;
+
+    if (g_dtcCheckTimerMs < BODY_DTC_CHECK_PERIOD_MS)
+    {
+        g_dtcCheckTimerMs++;
+        return;
+    }
+
+    g_dtcCheckTimerMs = 0U;
+
+    ultrasonicOk = BodyControl_RunUltrasonicDiagnosticRoutine(&distanceMm);
+    BodyControl_UpdateUltrasonicDtcStatus((ultrasonicOk == FALSE) ? TRUE : FALSE);
+}
+
+uint8 BodyControl_GetUltrasonicDtcStatus(void)
+{
+    return g_ultrasonicDtcStatus;
+}
+
+void BodyControl_ClearDtcHistory(void)
+{
+    g_ultrasonicDtcStatus &= (uint8)(~BODY_DTC_STATUS_HISTORY_BIT);
+    g_ultrasonicDtcConsecutiveFailCount = 0U;
+    g_diagDangerBlinkActive = FALSE;
+    g_diagDangerBlinkOutputOn = FALSE;
+    g_diagDangerBlinkToggleCount = 0U;
+    g_diagDangerBlinkTimerMs = 0U;
+
+    BodyControl_UpdateUltrasonicDtcDebug();
+    BodyControl_SyncUltrasonicDtcFaultMask();
+}
+
 /* Update */
 
 void BodyControl_Update1ms(void)
@@ -1901,6 +2077,8 @@ void BodyControl_Update1ms(void)
     BodyControl_UpdateUltrasonic1ms();
     BodyControl_UpdateHorn1ms();
     BodyControl_UpdateCollisionWarningSound1ms();
+    BodyControl_UpdateDtcStatus1ms();
+    BodyControl_UpdateDiagDangerLedBlink1ms();
 
     if ((g_leftTurnEnabled == FALSE) &&
         (g_rightTurnEnabled == FALSE))
