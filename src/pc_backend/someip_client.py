@@ -86,10 +86,23 @@ def _write_someipyd_config(interface_ip):
     return config_path
 
 
+def _can_connect_someipyd_tcp(timeout=0.2):
+    try:
+        with socket.create_connection(
+            (SOMEIPYD_TCP_HOST, SOMEIPYD_TCP_PORT),
+            timeout=timeout,
+        ):
+            return True
+    except OSError:
+        return False
+
+
 def _ensure_someipyd_running():
     global _daemon_proc
 
     if _daemon_proc is not None and _daemon_proc.poll() is None:
+        return
+    if platform.system() == "Windows" and _can_connect_someipyd_tcp():
         return
 
     someipyd = _find_someipyd()
