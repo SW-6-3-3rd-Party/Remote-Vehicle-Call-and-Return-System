@@ -36,18 +36,18 @@ void CanIf_Transmit(uint32_t canId, uint8_t* payload, uint8_t length)
     boolean isSent = Can_Send(canId, payload, length);
 
     /* 3. 송신 결과 처리는 필요 시 구현 */
-    if(canId == 0x100 || canId == 0x700)
-    {
-        if(isSent == FALSE)
-            SWC_Callback_ActCommloss();
-        else
-            SWC_Callback_ActRecovered();
-    }
-    else if(canId == 0x110 || canId == 0x710)
-    {
-        if(isSent == FALSE)
-            SWC_Callback_BodyCommloss();
-        else
-            SWC_Callback_BodyRecovered();
-    }
+//    if(canId == 0x100 || canId == 0x700)
+//    {
+//        if(isSent == FALSE)
+//            SWC_Callback_ActCommloss();
+//        else
+//            SWC_Callback_ActRecovered();
+//    }
+//    else if(canId == 0x110 || canId == 0x710)
+//    {
+//        if(isSent == FALSE)
+//            SWC_Callback_BodyCommloss();
+//        else
+//            SWC_Callback_BodyRecovered();
+//    }
 }
