@@ -130,7 +130,13 @@ DTC_DESCRIPTIONS = {
 
 
 def open_main_client(target_address, timeout=5.0):
-    return DoipClient(MAIN_ECU["host"], MAIN_ECU["port"], target_address, timeout=timeout)
+    return DoipClient(
+        MAIN_ECU["host"],
+        MAIN_ECU["port"],
+        target_address,
+        timeout=timeout,
+        activation_address=MAIN_ECU["logical_address"],
+    )
 
 
 def open_media_client(timeout=2.0):
@@ -416,10 +422,38 @@ def run_function_test(test_id):
         return {"result": "ERROR", "detail": "알 수 없는 routine id입니다."}
 
     target_name, logical_address, routine_id = routine_map[test_id]
+    print(
+        "[routine] START "
+        f"test_id={test_id} target={target_name} "
+        f"logical_address=0x{logical_address:04X} routine_id=0x{routine_id:04X}",
+        flush=True,
+    )
     with open_main_client(logical_address, timeout=5.0) as client:
-        ensure_routing_active(client.routing_activation(), target_name)
-        enter_session(client, 0x03, target_name)
+        print(f"[routine] ROUTING START target={target_name}", flush=True)
+        activation = client.routing_activation()
+        print(
+            "[routine] ROUTING RESP "
+            f"source=0x{activation.source_address:04X} "
+            f"target=0x{activation.target_address:04X} "
+            f"code=0x{activation.response_code:02X}",
+            flush=True,
+        )
+        ensure_routing_active(activation, target_name)
+
+        print(f"[routine] SESSION START target={target_name} session=0x03", flush=True)
+        session = enter_session(client, 0x03, target_name)
+        print(f"[routine] SESSION RESP raw={session['raw']}", flush=True)
+
+        print(
+            f"[routine] ROUTINE START target={target_name} routine_id=0x{routine_id:04X}",
+            flush=True,
+        )
         routine_result = run_routine(client, routine_id)
+        print(
+            "[routine] ROUTINE RESP "
+            f"ok={routine_result['ok']} raw={routine_result['raw']}",
+            flush=True,
+        )
 
     return {
         "result": "OK" if routine_result["ok"] else "ERROR",

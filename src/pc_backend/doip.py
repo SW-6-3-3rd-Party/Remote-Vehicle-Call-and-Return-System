@@ -23,10 +23,19 @@ class DoipClient:
     independent from the transport library details.
     """
 
-    def __init__(self, host, port, target_address, timeout=2.0, tester_address=TESTER_LOGICAL_ADDRESS):
+    def __init__(
+        self,
+        host,
+        port,
+        target_address,
+        timeout=2.0,
+        tester_address=TESTER_LOGICAL_ADDRESS,
+        activation_address=None,
+    ):
         self.host = host
         self.port = port
         self.target_address = target_address
+        self.activation_address = activation_address if activation_address is not None else target_address
         self.timeout = timeout
         self.tester_address = tester_address
         self.doip = None
@@ -55,7 +64,7 @@ class DoipClient:
         self._routing_activation_request = RoutingActivationRequest
         self.doip = LibraryDoIPClient(
             self.host,
-            self.target_address,
+            self.activation_address,
             tcp_port=self.port,
             activation_type=None,
             protocol_version=0x02,
@@ -100,7 +109,12 @@ class DoipClient:
                 0x00,
             )
 
-        response = self.doip.request_activation(activation_type)
+        self._set_library_target_address(self.activation_address)
+        try:
+            response = self.doip.request_activation(activation_type)
+        finally:
+            self._set_library_target_address(self.target_address)
+
         return RoutingActivationResult(
             source_address=self._coerce_int(response.client_logical_address),
             target_address=self._coerce_int(response.logical_address),
@@ -146,6 +160,10 @@ class DoipClient:
         if self.uds is None:
             raise DoipError("UDS client가 연결되어 있지 않습니다.")
         return self.uds
+
+    def _set_library_target_address(self, address):
+        if self.doip is not None and hasattr(self.doip, "_ecu_logical_address"):
+            self.doip._ecu_logical_address = address
 
     def _payload(self, response):
         if response is None:

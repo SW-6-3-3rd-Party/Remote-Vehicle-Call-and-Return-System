@@ -98,13 +98,27 @@ def _ensure_someipyd_running():
 
     _daemon_proc = subprocess.Popen(
         [someipyd, "--config", str(config_path), "--log-path", str(log_path)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
     )
 
     time.sleep(0.5)
     if _daemon_proc.poll() is not None:
-        raise SomeIpError(f"someipyd exited early with code {_daemon_proc.returncode}")
+        stdout, stderr = _daemon_proc.communicate(timeout=1)
+        details = []
+        if stdout:
+            details.append(f"stdout: {stdout.strip()}")
+        if stderr:
+            details.append(f"stderr: {stderr.strip()}")
+        if log_path.exists():
+            log_text = log_path.read_text(encoding="utf-8", errors="replace").strip()
+            if log_text:
+                details.append(f"log: {log_text[-2000:]}")
+        suffix = "\n" + "\n".join(details) if details else ""
+        raise SomeIpError(
+            f"someipyd exited early with code {_daemon_proc.returncode}{suffix}"
+        )
 
 
 def _build_service(service_id, method_id, minor_version=MEDIA_SOMEIP_MINOR_VERSION):
