@@ -1,5 +1,6 @@
 import asyncio
 import json
+import platform
 import shutil
 import socket
 import subprocess
@@ -28,6 +29,8 @@ MEDIA_SOMEIP_MINOR_VERSION = 0x00000000
 
 SOMEIP_SD_MULTICAST_IP = "224.224.224.245"
 SOMEIP_SD_PORT = 30490
+SOMEIPYD_TCP_HOST = "127.0.0.1"
+SOMEIPYD_TCP_PORT = 30500
 
 _daemon_proc = None
 _last_warning_light_state = 0
@@ -63,6 +66,7 @@ def _find_someipyd():
 
 
 def _write_someipyd_config(interface_ip):
+    use_tcp = platform.system() == "Windows"
     config_path = Path(tempfile.gettempdir()) / "pc_someipyd.json"
     config_path.write_text(
         json.dumps(
@@ -70,6 +74,9 @@ def _write_someipyd_config(interface_ip):
                 "interface": interface_ip,
                 "sd_address": SOMEIP_SD_MULTICAST_IP,
                 "sd_port": SOMEIP_SD_PORT,
+                "use_tcp": use_tcp,
+                "tcp_host": SOMEIPYD_TCP_HOST,
+                "tcp_port": SOMEIPYD_TCP_PORT,
                 "log_level": "INFO",
             },
             indent=2,
@@ -198,7 +205,13 @@ class SomeIpClient:
 
         _ensure_someipyd_running()
 
-        daemon = await connect_to_someipy_daemon()
+        daemon = await connect_to_someipy_daemon(
+            {
+                "use_tcp": platform.system() == "Windows",
+                "tcp_host": SOMEIPYD_TCP_HOST,
+                "tcp_port": SOMEIPYD_TCP_PORT,
+            }
+        )
         try:
             service = _build_service(service_id, method_id, minor_version)
             instance = ClientServiceInstance(
