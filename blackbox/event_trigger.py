@@ -15,10 +15,14 @@ from .event_db import EventDB
 
 log = logging.getLogger(__name__)
 
+_ECU_TRIGGER_FRAME_LEN = 5
+_ECU_EVENT_TYPE_ACCIDENT = 0x01
+
 
 def _transcode(avi: Path, mp4: Path,
                audio: Path | None = None,
-               audio_offset: float = 0.0) -> None:
+               audio_offset: float = 0.0,
+               target_duration: float | None = None) -> None:
     """
     AVI(MJPG) → MP4(H.264) 변환.  -movflags +faststart 로 웹 seeking 지원.
     audio가 주어지면 WAV를 AAC로 함께 합친다.
@@ -32,6 +36,17 @@ def _transcode(avi: Path, mp4: Path,
     if not avi.exists():
         log.error("트랜스코딩 원본 없음: %s", avi)
         return
+
+    video_filter: list[str] = []
+    if target_duration is not None and target_duration > 0:
+        video_timeline = _probe_video_timeline(avi)
+        if video_timeline is not None:
+            media_duration, pts_span = video_timeline
+            duration_ratio = target_duration / pts_span
+            if abs(duration_ratio - 1.0) > 0.01:
+                video_filter = ["-filter:v", f"setpts={duration_ratio:.6f}*PTS"]
+                log.info("비디오 길이 보정: %s %.3fs → %.3fs (ratio=%.6f)",
+                         avi.name, media_duration, target_duration, duration_ratio)
 
     audio_inputs: list[str] = []
     audio_codec: list[str] = ["-an"]
@@ -55,6 +70,7 @@ def _transcode(avi: Path, mp4: Path,
         mp4.unlink(missing_ok=True)
         cmd = [
             "ffmpeg", "-y", "-i", str(avi), *audio_inputs,
+            *video_filter,
             "-c:v", codec, *extra,
             *audio_codec,
             "-movflags", "+faststart",
@@ -107,6 +123,22 @@ def _transcode(avi: Path, mp4: Path,
         mp4.unlink(missing_ok=True)
 
 
+def _probe_video_timeline(path: Path) -> tuple[float, float] | None:
+    cap = cv2.VideoCapture(str(path))
+    try:
+        if not cap.isOpened():
+            return None
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        if fps <= 0 or frames <= 0:
+            return None
+        media_duration = frames / fps
+        pts_span = max((frames - 1) / fps, 1 / fps)
+        return media_duration, pts_span
+    finally:
+        cap.release()
+
+
 _POST_EVENT_COOLDOWN_SECS = 30  # 이벤트 종료 후 이 시간 동안 재트리거 무시
 
 class EventTrigger:
@@ -153,29 +185,39 @@ class EventTrigger:
                 continue
             except OSError:
                 break
-            if len(data) < 5:
-                log.warning("Too short packet from %s (%d bytes) — ignored", addr, len(data))
+            if len(data) != _ECU_TRIGGER_FRAME_LEN:
+                log.warning(
+                    "Invalid ECU trigger frame from %s (%d bytes, expected %d) — ignored",
+                    addr, len(data), _ECU_TRIGGER_FRAME_LEN,
+                )
                 continue
             event_type   = data[0]
             timestamp_ms = struct.unpack(">I", data[1:5])[0]
             log.info("ECU trigger from %s: event_type=0x%02X ts=%d ms",
                      addr, event_type, timestamp_ms)
-            if event_type != 0x01:
+            if event_type != _ECU_EVENT_TYPE_ACCIDENT:
                 log.debug("Unknown event_type 0x%02X — ignored", event_type)
                 continue
-            self._on_trigger()
+            self._on_trigger(source=f"ECU UDP {addr[0]}:{addr[1]}",
+                             ecu_event_type=event_type,
+                             ecu_timestamp_ms=timestamp_ms)
         sock.close()
 
     def trigger(self, source: str = "manual") -> bool:
         """Trigger an event recording from a non-UDP source."""
-        accepted = self._on_trigger()
+        accepted = self._on_trigger(source=source)
         if accepted:
             log.info("Event trigger accepted from %s", source)
         else:
             log.info("Event trigger ignored from %s", source)
         return accepted
 
-    def _on_trigger(self) -> bool:
+    def _on_trigger(
+        self,
+        source: str = "manual",
+        ecu_event_type: int | None = None,
+        ecu_timestamp_ms: int | None = None,
+    ) -> bool:
         with self._lock:
             now = time.time()
             if self._in_event:
@@ -186,26 +228,40 @@ class EventTrigger:
                 log.debug("Post-event cooldown active (%.1fs left) — ignoring trigger", remaining)
                 return False
             self._in_event = True
-        threading.Thread(target=self._handle_event, name="event-handler",
-                         daemon=True).start()
+        threading.Thread(
+            target=self._handle_event,
+            kwargs={
+                "source": source,
+                "ecu_event_type": ecu_event_type,
+                "ecu_timestamp_ms": ecu_timestamp_ms,
+            },
+            name="event-handler",
+            daemon=True,
+        ).start()
         return True
 
     # ------------------------------------------------------------------
     # Event handling
     # ------------------------------------------------------------------
 
-    def _handle_event(self) -> None:
+    def _handle_event(
+        self,
+        source: str = "manual",
+        ecu_event_type: int | None = None,
+        ecu_timestamp_ms: int | None = None,
+    ) -> None:
         triggered_at = time.time()
         event_id = datetime.fromtimestamp(triggered_at).strftime("%Y%m%d_%H%M%S")
         event_dir = config.EVENTS_DIR / f"event_{event_id}"
         event_dir.mkdir(parents=True, exist_ok=True)
 
-        log.info("Event triggered: %s", event_id)
+        log.info("Event triggered: %s  source=%s", event_id, source)
 
         try:
             # --- start clips (pre-event from ring buffer written immediately) ---
+            usb1_video_start: float | None = None
             if self._usb1 is not None:
-                self._usb1.start_event_clip(event_dir)
+                usb1_video_start = self._usb1.start_event_clip(event_dir)
             usb_video_start: float | None = None
             if self._usb is not None:
                 usb_video_start = self._usb.start_event_clip(event_dir)
@@ -217,6 +273,7 @@ class EventTrigger:
             time.sleep(config.POST_EVENT_SECS)
 
             # --- stop clips (files closed and flushed) ---
+            event_end_ts = time.time()
             if self._usb1 is not None:
                 self._usb1.stop_event_clip()
             if self._usb is not None:
@@ -228,6 +285,9 @@ class EventTrigger:
             meta = {
                 "event_id": event_id,
                 "triggered_at": triggered_at,
+                "trigger_source": source,
+                "ecu_event_type": ecu_event_type,
+                "ecu_timestamp_ms": ecu_timestamp_ms,
                 "pre_secs": config.PRE_EVENT_SECS,
                 "post_secs": config.POST_EVENT_SECS,
                 "files": {
@@ -247,12 +307,28 @@ class EventTrigger:
             streamer.notify_new_event(event_id)
 
             # 비디오-오디오 싱크 오프셋 계산
-            sync_offset = 0.0
+            sync_offsets = {
+                "front_clip": 0.0,
+                "usb_clip": 0.0,
+            }
+            target_durations = {
+                "front_clip": float(config.PRE_EVENT_SECS + config.POST_EVENT_SECS),
+                "usb_clip": float(config.PRE_EVENT_SECS + config.POST_EVENT_SECS),
+            }
+            if usb1_video_start is not None and mic_audio_start is not None:
+                sync_offsets["front_clip"] = usb1_video_start - mic_audio_start
+                target_durations["front_clip"] = event_end_ts - usb1_video_start
+                log.info("전방 비디오-오디오 싱크 오프셋: %.3fs "
+                         "(video_start=%.3f, audio_start=%.3f, duration=%.3f)",
+                         sync_offsets["front_clip"], usb1_video_start,
+                         mic_audio_start, target_durations["front_clip"])
             if usb_video_start is not None and mic_audio_start is not None:
-                sync_offset = usb_video_start - mic_audio_start
-                log.info("비디오-오디오 싱크 오프셋: %.3fs "
-                         "(video_start=%.3f, audio_start=%.3f)",
-                         sync_offset, usb_video_start, mic_audio_start)
+                sync_offsets["usb_clip"] = usb_video_start - mic_audio_start
+                target_durations["usb_clip"] = event_end_ts - usb_video_start
+                log.info("후방 비디오-오디오 싱크 오프셋: %.3fs "
+                         "(video_start=%.3f, audio_start=%.3f, duration=%.3f)",
+                         sync_offsets["usb_clip"], usb_video_start,
+                         mic_audio_start, target_durations["usb_clip"])
 
             # AVI → MP4 트랜스코딩 (백그라운드, seeking 지원)
             mic_wav = event_dir / "mic_clip.wav"
@@ -260,10 +336,11 @@ class EventTrigger:
             for stem in ("front_clip", "usb_clip"):
                 avi = event_dir / f"{stem}.avi"
                 mp4 = event_dir / f"{stem}.mp4"
-                audio = mic_wav if (stem == "usb_clip" and has_audio) else None
-                offset = sync_offset if stem == "usb_clip" else 0.0
+                audio = mic_wav if has_audio else None
+                offset = sync_offsets[stem]
+                duration = target_durations[stem]
                 threading.Thread(
-                    target=_transcode, args=(avi, mp4, audio, offset), daemon=True
+                    target=_transcode, args=(avi, mp4, audio, offset, duration), daemon=True
                 ).start()
 
         except Exception:

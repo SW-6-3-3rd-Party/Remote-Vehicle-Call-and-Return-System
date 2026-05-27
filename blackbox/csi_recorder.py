@@ -184,24 +184,31 @@ class FrontUSBRecorder:
     # Event clip API
     # ------------------------------------------------------------------
 
-    def start_event_clip(self, event_dir: Path) -> None:
+    def start_event_clip(self, event_dir: Path) -> float | None:
+        """
+        Returns the actual timestamp of the oldest pre-event frame,
+        used to calculate audio-video sync offset.
+        """
         path = event_dir / "front_clip.avi"
         writer = self._make_writer(path, config.USB1_FPS,
                                    config.USB1_WIDTH, config.USB1_HEIGHT)
         if not writer.isOpened():
             log.error("USB1 VideoWriter 열기 실패: %s", path)
-            return
+            return None
 
         snapshot = self.ring.snapshot()
         cutoff_ts = time.time() - config.PRE_EVENT_SECS
         filtered = [(ts, frame) for ts, frame in snapshot if ts >= cutoff_ts]
+        video_start_ts = filtered[0][0] if filtered else None
         for _, frame in filtered:
             writer.write(frame)
 
         with self._event_lock:
             self._event_writer = writer
 
-        log.info("USB1 이벤트 클립 시작  pre=%d프레임  path=%s", len(filtered), path)
+        log.info("USB1 이벤트 클립 시작  pre=%d프레임  path=%s  start_ts=%.3f",
+                 len(filtered), path, video_start_ts or 0)
+        return video_start_ts
 
     def stop_event_clip(self) -> None:
         with self._event_lock:
