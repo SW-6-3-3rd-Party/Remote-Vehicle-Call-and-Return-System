@@ -11,6 +11,7 @@
 #include "pdur_cfg.h"
 #include "swc.h"
 #include "gettime.h"
+#include "dcm.h"
 #include "Platform_Types.h"
 
 /*********************************************************************************************************************/
@@ -78,7 +79,7 @@ static COMRxUDPCtrType COM_RxBuf_UDP_Ctr;
 static COMRxCANStatType COM_RxBuf_CAN_Stat;
 static COMRxCANBodyType COM_RxBuf_CAN_Body;
 
-static boolean COM_Collision_Warn;
+static boolean COM_Collision_Warn = 1;
 
 static uint8_t COM_Cur_Mode;
 static boolean COM_Safety_Override;
@@ -117,7 +118,7 @@ void UDP_Ctr_ProcessRx(uint8_t* payload, uint16_t length)
     if(COM_Cur_Mode == MODE_DEFAULT) COM_Cur_Mode = MODE_REMOTE;
     /* 핵심: 정상 수신되었으므로 시간 갱신 및 타임아웃 플래그 해제 */
     Last_Udp_RxTime = Get_SystemTime_ms();
-    SWC_Callback_PcRecovered();
+    DCM_Callback_PcRecovered();
 }
 
 void SomeIp_ProcessRx(uint8_t* payload, uint16_t length)
@@ -176,14 +177,14 @@ void CAN_Stat_processRx(uint8_t* payload, uint16_t length)
     COM_RxBuf_CAN_Stat.steer          =   payload[3];
     COM_RxBuf_CAN_Stat.steering_angle =   payload[4];
     Last_Act_RxTime = Get_SystemTime_ms();
-    SWC_Callback_ActRecovered();
+    DCM_Callback_ActRecovered();
 }
 
 void CAN_Body_processRx(uint8_t* payload, uint16_t length)
 {
     COM_RxBuf_CAN_Body.alive_cnt = payload[0];
     Last_Body_RxTime = Get_SystemTime_ms();
-    SWC_Callback_BodyRecovered();
+    DCM_Callback_BodyRecovered();
 }
 
 uint8_t COM_Get_Ignition(void) { return COM_RxBuf_UDP_Ctr.ignition; }
@@ -258,28 +259,28 @@ void COM_Tx_MainFunction(void)
 
 void COM_TimeOut(void)
 {
-
-    if (COM_Cur_Mode != MODE_REMOTE)
-        return;
-
     uint32_t currentTime = Get_SystemTime_ms();
 
     /* 마지막 수신 시간과 현재 시간의 차이가 500ms 이상 벌어졌는지 확인 */
-    if ((currentTime - Last_Udp_RxTime) >= UDP_TIMEOUT_THRESHOLD_MS)
+    if (COM_Cur_Mode == MODE_REMOTE && (currentTime - Last_Udp_RxTime) >= UDP_TIMEOUT_THRESHOLD_MS)
     {
         /* SWC로 "통신 끊겼다!" 라고 보고 (콜백 호출) */
         Callback_COM_PcTimeout();
-        SWC_Callback_PcCommloss();
+        if(COM_Cur_Mode == MODE_REMOTE)
+            DCM_Callback_PcCommloss();
+        Last_Udp_RxTime = currentTime;
     }
 
     if ((currentTime - Last_Act_RxTime) >= ACT_TIMEOUT_THRESHOLD_MS)
     {
-        SWC_Callback_ActCommloss();
+        DCM_Callback_ActCommloss();
+        Last_Act_RxTime = currentTime;
     }
 
     if ((currentTime - Last_Body_RxTime) >= BODY_TIMEOUT_THRESHOLD_MS)
     {
-        SWC_Callback_BodyCommloss();
+        DCM_Callback_BodyCommloss();
+        Last_Body_RxTime = currentTime;
     }
 }
 
