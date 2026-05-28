@@ -119,6 +119,7 @@ void UDP_Ctr_ProcessRx(uint8_t* payload, uint16_t length)
     else if(COM_RxBuf_UDP_Ctr.ignition == IGNITIONOFF ) COM_Cur_Mode = MODE_DEFAULT;
     /* 핵심: 정상 수신되었으므로 시간 갱신 및 타임아웃 플래그 해제 */
     Last_Udp_RxTime = Get_SystemTime_ms();
+    COM_Set_Safety_Override(PC_DEFAULT);
     DCM_Callback_PcRecovered();
 }
 

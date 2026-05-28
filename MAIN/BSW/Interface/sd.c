@@ -19,7 +19,7 @@
 #define SD_MAJOR_VERSION       0x01
 #define SD_MINOR_VERSION       0x00000001
 
-#define SD_TTL                 3
+#define SD_TTL                 10
 
 #define SD_ENDPOINT_PORT       30492
 
