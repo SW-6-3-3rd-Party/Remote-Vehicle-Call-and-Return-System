@@ -171,14 +171,6 @@
   letter-spacing: -0.04em;
 }
 
-.diag-title p:last-child {
-  max-width: 680px;
-  margin: 12px auto 0;
-  color: var(--ink-soft);
-  font-size: 15px;
-  line-height: 1.6;
-}
-
 .diag-mode-box {
   justify-self: end;
   min-width: 210px;
@@ -249,7 +241,7 @@
 /* 상단 요약 카드 */
 .diag-overview {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -480,12 +472,6 @@
   cursor: not-allowed;
 }
 
-.diag-test-group button small {
-  margin-top: 4px;
-  color: var(--ink-soft);
-  font-size: 12px;
-}
-
 .diag-test-result {
   min-height: 100%;
   padding: 16px;
@@ -566,7 +552,7 @@
 .diag-dtc-table-head,
 .diag-dtc-table-row {
   display: grid;
-  grid-template-columns: 0.9fr 1fr 0.75fr 0.85fr 0.85fr 1.4fr;
+  grid-template-columns: 0.9fr 1fr 0.75fr 1.8fr;
   gap: 10px;
   align-items: center;
   padding: 12px 14px;
@@ -622,6 +608,10 @@
 
 /* 반응형 */
 @media (max-width: 1220px) {
+  .diag-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .diag-ecu-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -638,10 +628,6 @@
 
   .diag-title {
     text-align: left;
-  }
-
-  .diag-title p:last-child {
-    margin-left: 0;
   }
 
   .diag-mode-box {

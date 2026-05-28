@@ -41,6 +41,13 @@ function getDidTone(item) {
   return "good";
 }
 
+function getRoutingStatus(ecu) {
+  const routing = ecu?.dids?.find((item) => item.label === "Routing Activation");
+  if (!ecu || ecu.state === "Standby" || routing?.value === "대기") return "Standby";
+  if (ecu.state === "Offline" || routing?.tone === "bad") return "Offline";
+  return "Active";
+}
+
 function formatValue(value) {
   if (value === null || value === undefined || value === "") return "--";
   return String(value);
@@ -87,7 +94,7 @@ function buildInitialEcus() {
       address: "Media Unit",
       route: "DoIP 192.168.20.2:13401",
       state: "Standby",
-      summary: "Camera / Audio / EDR",
+      summary: "Camera / Audio / Accident Log",
       dids: [],
       dtcs: [],
     },
@@ -192,8 +199,15 @@ function buildMediaCard(section) {
     };
   }
 
+  const activation = section.routing_activation;
+  const success = Boolean(activation?.success);
   const dtcs = section.dtcs?.items || [];
   const hasBadDid = (section.dids || []).some((item) => getDidTone(item) === "bad");
+  const routingDid = {
+    label: "Routing Activation",
+    value: success ? "성공" : "거부",
+    tone: success ? "good" : "bad",
+  };
   const sessionDid = section.session
     ? [{
         label: "진단 세션",
@@ -207,9 +221,9 @@ function buildMediaCard(section) {
     name: "MEDIA PI",
     address: "Media Unit",
     route: `DoIP ${section.host}:${section.port}`,
-    state: dtcs.length > 0 || hasBadDid ? "Warning" : "Normal",
-    summary: "Camera / Audio / EDR",
-    dids: [...sessionDid, ...makeDids(section.dids)],
+    state: success && dtcs.length === 0 && !hasBadDid ? "Normal" : "Warning",
+    summary: "Camera / Audio / Accident Log",
+    dids: [routingDid, ...sessionDid, ...makeDids(section.dids)],
     dtcs,
   };
 }
@@ -242,8 +256,6 @@ function buildDtcRows(ecus) {
       ecu: ecu.name,
       code: dtc.code,
       status: dtc.state || dtc.status || "Stored",
-      firstSeenAt: "--",
-      duration: "--",
       description: dtc.description || "정의되지 않은 DTC",
     }))
   );
@@ -296,6 +308,8 @@ function DiagnosticPage({ onBack }) {
   ]);
 
   const activeDtcCount = dtcs.filter((dtc) => dtc.status === "Active").length;
+  const mainEcu = ecus.find((ecu) => ecu.id === "main");
+  const mediaEcu = ecus.find((ecu) => ecu.id === "media");
 
   const pushLog = useCallback((message) => {
     setLogs((current) =>
@@ -466,10 +480,6 @@ function DiagnosticPage({ onBack }) {
         <div className="diag-title">
           <p className="page-kicker">DoIP / UDS Diagnostic Console</p>
           <h1>진단 대시보드</h1>
-          <p>
-            Media Pi 직접 DoIP와 MAIN 게이트웨이 Routing Activation, ACT/BODY
-            MAIN 자체 통신 DTC와 ACT/BODY/Media UDS DID, DTC, RoutineControl을 수행합니다.
-          </p>
         </div>
 
         <div className="diag-mode-box">
@@ -501,9 +511,14 @@ function DiagnosticPage({ onBack }) {
             <p>MAIN, ACT, BODY, MEDIA</p>
           </article>
           <article>
-            <span>Routing</span>
-            <strong>{ecus[0]?.state === "Ready" ? "Active" : "Standby"}</strong>
-            <p>MAIN ECU Routing Activation 상태</p>
+            <span>MAIN Routing</span>
+            <strong>{getRoutingStatus(mainEcu)}</strong>
+            <p>MAIN ECU Routing Activation</p>
+          </article>
+          <article>
+            <span>MEDIA Routing</span>
+            <strong>{getRoutingStatus(mediaEcu)}</strong>
+            <p>Media Pi Routing Activation</p>
           </article>
           <article>
             <span>Active DTC</span>
@@ -513,7 +528,7 @@ function DiagnosticPage({ onBack }) {
           <article>
             <span>기능 테스트</span>
             <strong>{diagMode && !loading ? "Enabled" : "Locked"}</strong>
-            <p>RoutineControl 0x31 실행 가능</p>
+            <p>테스트 실행 가능</p>
           </article>
         </section>
 
@@ -544,7 +559,6 @@ function DiagnosticPage({ onBack }) {
                           onClick={() => handleRoutine({ ...item, ecu: group.ecu })}
                         >
                           <span>{item.label}</span>
-                          <small>{item.routine}</small>
                         </button>
                       ))}
                     </div>
@@ -595,8 +609,6 @@ function DiagnosticPage({ onBack }) {
                 <span>ECU</span>
                 <span>Code</span>
                 <span>Status</span>
-                <span>최초 발생</span>
-                <span>지속 시간</span>
                 <span>설명</span>
               </div>
 
@@ -608,8 +620,6 @@ function DiagnosticPage({ onBack }) {
                     <span>{dtc.ecu}</span>
                     <strong>{dtc.code}</strong>
                     <em>{dtc.status}</em>
-                    <span>{dtc.firstSeenAt}</span>
-                    <span>{dtc.duration}</span>
                     <span>{dtc.description}</span>
                   </div>
                 ))
