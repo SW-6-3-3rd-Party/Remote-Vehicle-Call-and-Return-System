@@ -30,7 +30,7 @@ function RemoteControlPage({ onBack }) {
   const [rightSignalOn, setRightSignalOn] = useState(false);
   const [hazardOn, setHazardOn] = useState(false);
   const [ignitionOn, setIgnitionOn] = useState(false);
-  const [warningLightOn, setWarningLightOn] = useState(false);
+  const [warningLightOn, setWarningLightOn] = useState(true);
   const [warningLightPending, setWarningLightPending] = useState(false);
   const [hornOn, setHornOn] = useState(false);
   const [latestEventName, setLatestEventName] = useState("");
@@ -100,17 +100,36 @@ function RemoteControlPage({ onBack }) {
     sendControlCommand("brake", "OFF");
   };
 
-  useEffect(() => {
-    fetch(REMOTE_START_URL, { method: "POST" }).catch((error) => {
-      console.error("원격 제어 ON 실패:", error);
+useEffect(() => {
+  fetch(REMOTE_START_URL, { method: "POST" }).catch((error) => {
+    console.error("원격 제어 ON 실패:", error);
+  });
+
+  fetch(WARNING_LIGHT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      enable: 1,
+    }),
+  })
+    .then(async (response) => {
+      const data = await response.json();
+      if (String(data.result || "").toUpperCase() === "OK") {
+        setWarningLightOn(data.state === 1);
+      }
+    })
+    .catch((error) => {
+      console.error("초기 경고등 ON 실패:", error);
     });
 
-    return () => {
-      fetch(REMOTE_STOP_URL, { method: "POST" }).catch((error) => {
-        console.error("원격 제어 OFF 실패:", error);
-      });
-    };
-  }, []);
+  return () => {
+    fetch(REMOTE_STOP_URL, { method: "POST" }).catch((error) => {
+      console.error("원격 제어 OFF 실패:", error);
+    });
+  };
+}, []);
 
   useEffect(() => {
     const statusIntervalId = setInterval(async () => {
