@@ -29,13 +29,8 @@ void Callback_COM_SessionCnt(uint8_t *cnt) { cnt++;}
 
 void Callback_COM_PcTimeout(void)
 {
-    if(COM_Get_Ignition() == IGNITIONON)
-    {
         COM_Set_Safety_Override(PC_TIMEOUT_BREAK);
         COM_Set_Turn_Signal(PC_TIMEOUT_LIGHT);
-    }
-    else
-        COM_Set_CurMode(MODE_DEFAULT);
 }
 
 void SWC_BuzzerControlIndication(const uint8_t* msg)

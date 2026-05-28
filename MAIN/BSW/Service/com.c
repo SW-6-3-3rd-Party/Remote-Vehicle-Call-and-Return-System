@@ -115,7 +115,8 @@ void UDP_Ctr_ProcessRx(uint8_t* payload, uint16_t length)
     COM_RxBuf_UDP_Ctr.ignition  =   payload[7];
     COM_RxBuf_UDP_Ctr.head_light =  payload[8];
 
-    if(COM_Cur_Mode == MODE_DEFAULT) COM_Cur_Mode = MODE_REMOTE;
+    if(COM_RxBuf_UDP_Ctr.ignition == IGNITIONON ) COM_Cur_Mode = MODE_REMOTE;
+    else if(COM_RxBuf_UDP_Ctr.ignition == IGNITIONOFF ) COM_Cur_Mode = MODE_DEFAULT;
     /* 핵심: 정상 수신되었으므로 시간 갱신 및 타임아웃 플래그 해제 */
     Last_Udp_RxTime = Get_SystemTime_ms();
     DCM_Callback_PcRecovered();
@@ -266,8 +267,7 @@ void COM_TimeOut(void)
     {
         /* SWC로 "통신 끊겼다!" 라고 보고 (콜백 호출) */
         Callback_COM_PcTimeout();
-        if(COM_Cur_Mode == MODE_REMOTE)
-            DCM_Callback_PcCommloss();
+        DCM_Callback_PcCommloss();
         Last_Udp_RxTime = currentTime;
     }
 
