@@ -366,7 +366,7 @@ const handleBack = () => {
           </span>
 
           <span className="battery-pill">
-            이벤트: {latestEventName || "없음"}
+            배터리: {latestEventName || "78%"}
             <span className="battery-icon">
               <span />
             </span>
