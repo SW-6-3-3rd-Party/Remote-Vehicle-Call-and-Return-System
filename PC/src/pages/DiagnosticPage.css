@@ -1,0 +1,661 @@
+.diagnostic-page {
+  --diag-ink-strong: #10233f;
+  --diag-ink-soft: #5d718c;
+  --diag-line-soft: rgba(115, 138, 164, 0.2);
+  --diag-panel-light: rgba(255, 255, 255, 0.88);
+  --diag-panel-solid: #ffffff;
+  --diag-accent-blue: #1b5cff;
+  --diag-accent-cyan: #2fd4ff;
+  --diag-accent-gold: #ffb649;
+  --diag-shadow-soft: 0 24px 70px rgba(17, 30, 54, 0.12);
+
+  min-height: 100vh;
+  padding: clamp(20px, 3vw, 36px);
+  overflow-y: auto;
+
+  font-family:
+    "Pretendard Variable",
+    "SUIT Variable",
+    "Noto Sans KR",
+    "Segoe UI",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--diag-ink-strong);
+
+  background:
+    radial-gradient(circle at top left, rgba(47, 212, 255, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(255, 182, 73, 0.08), transparent 28%),
+    linear-gradient(180deg, #f5f8fc 0%, #e8edf6 100%);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.diagnostic-page *,
+.diagnostic-page *::before,
+.diagnostic-page *::after {
+  box-sizing: border-box;
+}
+
+.diagnostic-page img,
+.diagnostic-page video {
+  display: block;
+  max-width: 100%;
+}
+
+.diagnostic-page button,
+.diagnostic-page input,
+.diagnostic-page textarea,
+.diagnostic-page select {
+  font: inherit;
+}
+
+.diagnostic-page button {
+  border: 0;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.diagnostic-page button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.diagnostic-page button:focus-visible {
+  outline: 2px solid var(--diag-accent-cyan);
+  outline-offset: 3px;
+}
+
+:root {
+  --ink-strong: #10233f;
+  --ink-soft: #5d718c;
+  --line-soft: rgba(115, 138, 164, 0.2);
+  --panel-light: rgba(255, 255, 255, 0.88);
+  --panel-solid: #ffffff;
+  --accent-blue: #1b5cff;
+  --accent-cyan: #2fd4ff;
+  --accent-gold: #ffb649;
+  --shadow-soft: 0 24px 70px rgba(17, 30, 54, 0.12);
+}
+
+/* 진단 페이지에서는 스크롤 가능해야 함 */
+.diagnostic-page {
+  min-height: 100vh;
+  padding: clamp(20px, 3vw, 36px);
+  overflow-y: auto;
+  color: var(--ink-strong);
+  background:
+    radial-gradient(circle at top left, rgba(47, 212, 255, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(255, 182, 73, 0.08), transparent 28%),
+    linear-gradient(180deg, #f5f8fc 0%, #e8edf6 100%);
+}
+
+/* DiagnosticPage 안에서만 버튼 기본 효과 적용 */
+.diagnostic-page button {
+  border: 0;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.diagnostic-page button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.diagnostic-page button:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+}
+
+/* 공통 작은 라벨 */
+.diagnostic-page .page-kicker {
+  margin: 0 0 10px;
+  color: var(--accent-blue);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* 뒤로가기 버튼 */
+.diagnostic-page .back-button {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid rgba(78, 104, 135, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(17, 30, 54, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* =========================
+   Diagnostic Page
+   ========================= */
+
+.diag-header,
+.diag-content {
+  width: min(100%, 1380px);
+  margin-inline: auto;
+}
+
+.diag-header {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 220px;
+  align-items: start;
+  gap: 22px;
+  margin-bottom: 20px;
+}
+
+.diag-title {
+  text-align: center;
+}
+
+.diag-title h1 {
+  margin: 0;
+  font-size: clamp(34px, 4vw, 50px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.diag-mode-box {
+  justify-self: end;
+  min-width: 210px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 14px 34px rgba(17, 30, 54, 0.08);
+}
+
+.diag-mode,
+.diag-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.diag-mode {
+  width: 100%;
+  justify-content: center;
+  background: rgba(93, 113, 140, 0.12);
+  color: var(--ink-soft);
+}
+
+.diag-mode.active {
+  background: rgba(27, 92, 255, 0.12);
+  color: var(--accent-blue);
+}
+
+.diag-mode-box small {
+  display: block;
+  margin-top: 10px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-align: center;
+}
+
+.diag-run-button {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 12px;
+  border: 1px solid rgba(27, 92, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(244, 248, 255, 0.94);
+  color: var(--accent-blue);
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.diag-run-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.diag-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* 상단 요약 카드 */
+.diag-overview {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.diag-overview article,
+.diag-ecu-card,
+.diag-test-panel,
+.diag-dtc-panel,
+.diag-log-panel {
+  border: 1px solid rgba(98, 121, 151, 0.18);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 44px rgba(17, 30, 54, 0.1);
+}
+
+.diag-overview article {
+  padding: 16px 18px;
+}
+
+.diag-overview span,
+.diag-ecu-head p,
+.diag-test-group h3,
+.diag-dtc-table-head {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.diag-overview strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.diag-overview p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+/* ECU 카드 */
+.diag-ecu-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.diag-ecu-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  padding: 18px;
+}
+
+.diag-ecu-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.diag-ecu-head p {
+  margin: 0 0 7px;
+}
+
+.diag-ecu-head h2,
+.diag-section-head h2 {
+  margin: 0;
+  font-size: 23px;
+  letter-spacing: -0.03em;
+}
+
+.diag-state.normal,
+.diag-state.ready {
+  background: rgba(47, 212, 255, 0.14);
+  color: #0b7191;
+}
+
+.diag-state.warning {
+  background: rgba(255, 182, 73, 0.18);
+  color: #9d5a00;
+}
+
+.diag-state.offline {
+  background: rgba(186, 61, 61, 0.12);
+  color: #ba3d3d;
+}
+
+.diag-ecu-summary {
+  min-height: 42px;
+  margin: 12px 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.diag-route {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(8, 17, 34, 0.04);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.diag-did-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.diag-did-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid rgba(98, 121, 151, 0.12);
+  border-radius: 12px;
+  background: rgba(247, 250, 255, 0.9);
+}
+
+.diag-did-label {
+  min-width: 0;
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.diag-did-row strong {
+  white-space: nowrap;
+  color: var(--accent-blue);
+  font-size: 15px;
+}
+
+.diag-did-row strong.diag-value-good {
+  color: #0b8f66;
+}
+
+.diag-did-row strong.diag-value-warn {
+  color: #9d5a00;
+}
+
+.diag-did-row strong.diag-value-bad {
+  color: #ba3d3d;
+}
+
+.diag-did-row em {
+  margin-left: 4px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-style: normal;
+}
+
+/* 하단 영역 */
+.diag-lower-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1.2fr 1fr;
+  gap: 14px;
+}
+
+.diag-test-panel,
+.diag-dtc-panel,
+.diag-log-panel {
+  padding: 18px;
+}
+
+.diag-section-head {
+  margin-bottom: 14px;
+}
+
+.diag-section-head.with-action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.diag-section-head .page-kicker {
+  margin-bottom: 5px;
+}
+
+/* 기능 테스트 */
+.diag-test-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.diag-test-group + .diag-test-group {
+  margin-top: 18px;
+}
+
+.diag-test-group h3 {
+  margin: 0 0 10px;
+}
+
+.diag-test-group div {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.diag-test-group button {
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(27, 92, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(244, 248, 255, 0.94);
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 850;
+  text-align: left;
+  cursor: pointer;
+}
+
+.diag-test-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.diag-test-result {
+  min-height: 100%;
+  padding: 16px;
+  border: 1px solid rgba(98, 121, 151, 0.14);
+  border-radius: 16px;
+  background: rgba(247, 250, 255, 0.9);
+}
+
+.diag-test-result h3 {
+  margin: 12px 0 8px;
+  color: var(--ink-strong);
+  font-size: 20px;
+}
+
+.diag-test-result p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.diag-test-result strong {
+  display: block;
+  margin-top: 14px;
+  color: var(--accent-blue);
+  font-size: 14px;
+}
+
+.diag-test-result-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.diag-test-result-pill.success {
+  background: rgba(47, 212, 255, 0.14);
+  color: #0b7191;
+}
+
+.diag-test-result-pill.fail {
+  background: rgba(186, 61, 61, 0.12);
+  color: #ba3d3d;
+}
+
+.diag-test-result-pill.idle {
+  background: rgba(93, 113, 140, 0.12);
+  color: var(--ink-soft);
+}
+
+/* DTC */
+.diag-clear-dtc-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(186, 61, 61, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 241, 241, 0.92);
+  color: #ba3d3d;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.diag-clear-dtc-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.diag-dtc-table {
+  overflow: hidden;
+  border: 1px solid rgba(98, 121, 151, 0.14);
+  border-radius: 14px;
+}
+
+.diag-dtc-table-head,
+.diag-dtc-table-row {
+  display: grid;
+  grid-template-columns: 0.9fr 1fr 0.75fr 1.8fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.diag-dtc-table-head {
+  background: rgba(8, 17, 34, 0.04);
+}
+
+.diag-dtc-table-row {
+  border-top: 1px solid rgba(98, 121, 151, 0.12);
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.diag-dtc-table-row strong {
+  color: #ba3d3d;
+}
+
+.diag-dtc-table-row em {
+  width: max-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 182, 73, 0.18);
+  color: #9d5a00;
+  font-style: normal;
+  font-size: 12px;
+}
+
+.diag-empty-dtc {
+  padding: 24px 14px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* 로그 */
+.diag-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diag-log-list p {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(8, 17, 34, 0.04);
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 반응형 */
+@media (max-width: 1220px) {
+  .diag-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .diag-ecu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .diag-lower-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .diag-header {
+    grid-template-columns: 1fr;
+  }
+
+  .diag-title {
+    text-align: left;
+  }
+
+  .diag-mode-box {
+    justify-self: stretch;
+  }
+
+  .diag-overview,
+  .diag-ecu-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .diagnostic-page {
+    padding: 16px;
+  }
+
+  .diag-did-row,
+  .diag-dtc-table-head,
+  .diag-dtc-table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .diag-test-group div {
+    grid-template-columns: 1fr;
+  }
+
+  .diag-test-layout {
+    grid-template-columns: 1fr;
+  }
+}
