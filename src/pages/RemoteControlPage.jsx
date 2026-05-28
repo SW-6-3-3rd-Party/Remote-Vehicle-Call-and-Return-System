@@ -30,6 +30,7 @@ function RemoteControlPage({ onBack }) {
   const [rightSignalOn, setRightSignalOn] = useState(false);
   const [hazardOn, setHazardOn] = useState(false);
   const [ignitionOn, setIgnitionOn] = useState(false);
+  const [headLightOn, setHeadLightOn] = useState(false);
   const [warningLightOn, setWarningLightOn] = useState(true);
   const [warningLightPending, setWarningLightPending] = useState(false);
   const [hornOn, setHornOn] = useState(false);
@@ -358,6 +359,12 @@ const handleBack = () => {
     sendControlCommand("ignition", next ? "ON" : "OFF");
   };
 
+const handleHeadLightClick = () => {
+  const next = !headLightOn;
+  setHeadLightOn(next);
+  sendControlCommand("head_light", next ? "ON" : "OFF");
+};
+
   const handleGearClick = (nextGear) => {
     setGear(nextGear);
     sendControlCommand("gear", nextGear);
@@ -450,24 +457,33 @@ const handleBack = () => {
             </button>
           </section>
 
-          <section className="small-action-grid horn-only-grid">
-            <div className="horn-card">
-              <h3>경적</h3>
+<section className="light-horn-grid">
+  <div className="headlight-card">
+    <h3>전조등</h3>
 
-              <button
-                className={`horn-button ${hornOn ? "active" : ""}`}
-                onMouseDown={handleHornOn}
-                onMouseUp={handleHornOff}
-                onMouseLeave={handleHornOff}
-                onTouchStart={handleHornOn}
-                onTouchEnd={handleHornOff}
-              >
-                📣
-              </button>
+    <button
+      className={`headlight-button ${headLightOn ? "active" : ""}`}
+      onClick={handleHeadLightClick}
+    >
+      💡
+    </button>
+  </div>
 
-              <p>{hornOn ? "켜짐" : "꺼짐"}</p>
-            </div>
-          </section>
+  <div className="horn-card">
+    <h3>경적</h3>
+
+    <button
+      className={`horn-button ${hornOn ? "active" : ""}`}
+      onMouseDown={handleHornOn}
+      onMouseUp={handleHornOff}
+      onMouseLeave={handleHornOff}
+      onTouchStart={handleHornOn}
+      onTouchEnd={handleHornOff}
+    >
+      📣
+    </button>
+  </div>
+</section>
 
           <section className="buzzer-card side-buzzer-card">
             <h3>충돌방지 경고등</h3>
