@@ -135,7 +135,11 @@ void Uds_ProcessRx(uint8_t* reqData, uint16_t reqLength)
 
                 txBuf[0] = 0x50;     // Positive Response SID
                 txBuf[1] = subFunc;  // Echo sub-function
-                txLen = 2;
+                txBuf[2] = 0x0b;
+                txBuf[3] = 0xb8;
+                txBuf[4] = 0x0b;
+                txBuf[5] = 0xb8;
+                txLen = 6;
                 DoIP_ProcessTx(0x0001, txBuf, txLen);
             }
             else
