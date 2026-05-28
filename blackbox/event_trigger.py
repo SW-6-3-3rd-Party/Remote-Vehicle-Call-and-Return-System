@@ -193,11 +193,12 @@ class EventTrigger:
                 continue
             event_type   = data[0]
             timestamp_ms = struct.unpack(">I", data[1:5])[0]
-            log.info("ECU trigger from %s: event_type=0x%02X ts=%d ms",
-                     addr, event_type, timestamp_ms)
+            log.info(
+                "ECU trigger from %s: payload=%s event_type=0x%02X ts=%d ms",
+                addr, data.hex(" "), event_type, timestamp_ms,
+            )
             if event_type != _ECU_EVENT_TYPE_ACCIDENT:
-                log.debug("Unknown event_type 0x%02X — ignored", event_type)
-                continue
+                log.warning("Unknown ECU event_type 0x%02X — recording anyway", event_type)
             self._on_trigger(source=f"ECU UDP {addr[0]}:{addr[1]}",
                              ecu_event_type=event_type,
                              ecu_timestamp_ms=timestamp_ms)
@@ -273,7 +274,6 @@ class EventTrigger:
             time.sleep(config.POST_EVENT_SECS)
 
             # --- stop clips (files closed and flushed) ---
-            event_end_ts = time.time()
             if self._usb1 is not None:
                 self._usb1.stop_event_clip()
             if self._usb is not None:
@@ -307,24 +307,23 @@ class EventTrigger:
             streamer.notify_new_event(event_id)
 
             # 비디오-오디오 싱크 오프셋 계산
+            event_duration = float(config.PRE_EVENT_SECS + config.POST_EVENT_SECS)
             sync_offsets = {
                 "front_clip": 0.0,
                 "usb_clip": 0.0,
             }
             target_durations = {
-                "front_clip": float(config.PRE_EVENT_SECS + config.POST_EVENT_SECS),
-                "usb_clip": float(config.PRE_EVENT_SECS + config.POST_EVENT_SECS),
+                "front_clip": event_duration,
+                "usb_clip": event_duration,
             }
             if usb1_video_start is not None and mic_audio_start is not None:
                 sync_offsets["front_clip"] = usb1_video_start - mic_audio_start
-                target_durations["front_clip"] = event_end_ts - usb1_video_start
                 log.info("전방 비디오-오디오 싱크 오프셋: %.3fs "
                          "(video_start=%.3f, audio_start=%.3f, duration=%.3f)",
                          sync_offsets["front_clip"], usb1_video_start,
                          mic_audio_start, target_durations["front_clip"])
             if usb_video_start is not None and mic_audio_start is not None:
                 sync_offsets["usb_clip"] = usb_video_start - mic_audio_start
-                target_durations["usb_clip"] = event_end_ts - usb_video_start
                 log.info("후방 비디오-오디오 싱크 오프셋: %.3fs "
                          "(video_start=%.3f, audio_start=%.3f, duration=%.3f)",
                          sync_offsets["usb_clip"], usb_video_start,

@@ -297,8 +297,19 @@ class FrontUSBRecorder:
                                    config.USB1_WIDTH, config.USB1_HEIGHT)
         if not writer.isOpened():
             raise RuntimeError(f"VideoWriter 열기 실패: {path}")
+        self._purge_old_segments(seg_dir, "*.avi")
         log.debug("USB1 연속 세그먼트: %s", path)
         return writer, time.time()
+
+    @staticmethod
+    def _purge_old_segments(directory: Path, pattern: str) -> None:
+        files = sorted(directory.glob(pattern))
+        for old in files[: max(0, len(files) - config.CONTINUOUS_MAX_SEGMENTS)]:
+            try:
+                old.unlink()
+                log.debug("Purged old segment: %s", old.name)
+            except Exception as e:
+                log.warning("Failed to purge %s: %s", old.name, e)
 
     @staticmethod
     def _make_writer(path: Path, fps: int, w: int, h: int) -> cv2.VideoWriter:

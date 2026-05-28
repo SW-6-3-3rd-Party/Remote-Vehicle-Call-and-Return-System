@@ -8,6 +8,7 @@ blackbox.main 에서 별도 스레드로 실행된다.
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import sys
@@ -66,7 +67,9 @@ def _ensure_someipyd_running() -> None:
         "--config", str(config_path),
         "--log-path", str(log_path),
     ]
-    _daemon_proc = subprocess.Popen(cmd)
+    env = os.environ.copy()
+    env["SOMEIP_MULTICAST_TTL"] = str(config.SOMEIP_IP_MULTICAST_TTL)
+    _daemon_proc = subprocess.Popen(cmd, env=env)
 
     deadline = time.time() + 3.0
     while time.time() < deadline:
@@ -105,10 +108,6 @@ async def _run(db: EventDB, event_trigger=None) -> None:
                         "accident_count": 0, "accidents": []}
             else:
                 recording_started = False
-                if event_trigger is not None:
-                    recording_started = bool(
-                        event_trigger.trigger(source=f"SOME/IP {addr[0]}:{addr[1]}")
-                    )
                 events = db.get_events(limit=50)
                 if not events:
                     resp = {"result": "EMPTY", "error_code": 1,
@@ -164,6 +163,7 @@ async def _run(db: EventDB, event_trigger=None) -> None:
         ServiceBuilder()
         .with_service_id(config.ACCIDENT_SERVICE_ID)
         .with_major_version(1)
+        .with_minor_version(0)
         .with_method(method)
         .build()
     )
@@ -173,8 +173,8 @@ async def _run(db: EventDB, event_trigger=None) -> None:
         instance_id=config.ACCIDENT_INSTANCE_ID,
         endpoint_ip=config.MEDIA_INTERFACE_IP,
         endpoint_port=config.SOMEIP_SERVICE_PORT,
-        ttl=5,
-        cyclic_offer_delay_ms=2000,
+        ttl=config.SOMEIP_SD_OFFER_TTL,
+        cyclic_offer_delay_ms=config.SOMEIP_SD_OFFER_INTERVAL_MS,
     )
 
     log.info(

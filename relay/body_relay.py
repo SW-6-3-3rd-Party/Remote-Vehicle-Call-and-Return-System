@@ -24,6 +24,8 @@ log = logging.getLogger(__name__)
 LISTEN_PORT = 5200         # Body ECU → RPi #1 수신 포트
 RPI2_IP     = "192.168.20.2"
 RPI2_PORT   = 5011         # RPi #2 수신 포트 (config.ECU_TRIGGER_LISTEN_PORT)
+FRAME_LEN   = 5
+EVENT_TYPE_ACCIDENT = 0x01
 
 
 def relay(listen_port: int, rpi2_ip: str, rpi2_port: int) -> None:
@@ -35,16 +37,22 @@ def relay(listen_port: int, rpi2_ip: str, rpi2_port: int) -> None:
 
     while True:
         data, addr = sock_in.recvfrom(16)
-        if len(data) < 5:
-            log.warning("Too short packet from %s (%d bytes) — ignored", addr, len(data))
+        if len(data) != FRAME_LEN:
+            log.warning(
+                "Invalid packet from %s (%d bytes, expected %d) — ignored",
+                addr, len(data), FRAME_LEN,
+            )
             continue
 
         event_type   = data[0]
         timestamp_ms = struct.unpack(">I", data[1:5])[0]
         log.info("Received from %s: event_type=0x%02X  ts=%d ms",
                  addr, event_type, timestamp_ms)
+        if event_type != EVENT_TYPE_ACCIDENT:
+            log.warning("Unsupported event_type 0x%02X — ignored", event_type)
+            continue
 
-        sock_out.sendto(data[:5], (rpi2_ip, rpi2_port))
+        sock_out.sendto(data, (rpi2_ip, rpi2_port))
         log.info("Forwarded to %s:%d", rpi2_ip, rpi2_port)
 
 
