@@ -259,9 +259,17 @@ def read_dtcs(client, request_type="status_mask"):
 
 def clear_dtcs(client):
     uds_response = client.clear_dtc(0xFFFFFF)
+    ok = bool(uds_response and uds_response[0] == 0x54)
+    detail = ""
+    if not ok:
+        if len(uds_response) >= 3 and uds_response[0] == 0x7F:
+            detail = f"NRC 0x{uds_response[2]:02X}"
+        else:
+            detail = "응답 오류"
     return {
-        "ok": bool(uds_response and uds_response[0] == 0x54),
+        "ok": ok,
         "raw": hex_bytes(uds_response),
+        "detail": detail,
     }
 
 
@@ -381,31 +389,46 @@ def scan_main_routed_ecus():
 def clear_all_dtcs():
     results = []
 
-    with open_media_client() as client:
-        ensure_routing_active(client.routing_activation(), "MEDIA PI")
-        enter_session(client, 0x01, "MEDIA PI")
-        media_result = clear_dtcs(client)
-        results.append({"target": "MEDIA PI", **media_result})
-
-    with open_main_client(MAIN_ECU["logical_address"], timeout=5.0) as client:
-        ensure_routing_active(client.routing_activation(), "MAIN ECU")
-        enter_session(client, 0x03, "MAIN ECU")
-        results.append({"target": "MAIN ECU", **clear_dtcs(client)})
-
-    for target in ECU_TARGETS.values():
-        with open_main_client(target["logical_address"], timeout=5.0) as client:
-            ensure_routing_active(client.routing_activation(), target["name"])
-            enter_session(client, 0x03, target["name"])
+    def clear_target(target_name, opener, session_type):
+        try:
+            with opener() as client:
+                ensure_routing_active(client.routing_activation(), target_name)
+                enter_session(client, session_type, target_name)
+                results.append({"target": target_name, **clear_dtcs(client)})
+        except Exception as exc:
             results.append(
                 {
-                    "target": target["name"],
-                    **clear_dtcs(client),
+                    "target": target_name,
+                    "ok": False,
+                    "raw": "",
+                    "detail": str(exc),
                 }
             )
 
+    clear_target("MEDIA PI", open_media_client, 0x01)
+    clear_target(
+        "MAIN ECU",
+        lambda: open_main_client(MAIN_ECU["logical_address"], timeout=5.0),
+        0x03,
+    )
+
+    for target in ECU_TARGETS.values():
+        clear_target(
+            target["name"],
+            lambda logical_address=target["logical_address"]: open_main_client(
+                logical_address,
+                timeout=5.0,
+            ),
+            0x03,
+        )
+
+    ok_count = sum(1 for item in results if item["ok"])
+
     return {
-        "result": "OK" if all(item["ok"] for item in results) else "ERROR",
+        "result": "OK" if ok_count == len(results) else "PARTIAL" if ok_count else "ERROR",
         "items": results,
+        "ok_count": ok_count,
+        "failed_count": len(results) - ok_count,
     }
 
 

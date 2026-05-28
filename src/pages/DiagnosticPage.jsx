@@ -371,14 +371,20 @@ function DiagnosticPage({ onBack }) {
       });
       const data = await response.json();
 
-      if (!response.ok || data.result !== "OK") {
+      if (!response.ok || !["OK", "PARTIAL"].includes(data.result)) {
         throw new Error(data.detail || "DTC 삭제 실패");
       }
 
+      const clearedTargets = new Set(
+        (data.items || []).filter((item) => item.ok).map((item) => item.target)
+      );
       setEcus((current) =>
         current.map((ecu) => {
           const hasBadDid = (ecu.dids || []).some((item) => item.tone === "bad");
           const nextState = ecu.id === "main" && !hasBadDid ? "Ready" : hasBadDid ? "Warning" : "Normal";
+          if (!clearedTargets.has(ecu.name)) {
+            return ecu;
+          }
           return {
             ...ecu,
             state: nextState,
@@ -386,8 +392,16 @@ function DiagnosticPage({ onBack }) {
           };
         })
       );
-      setDtcs([]);
-      pushLog("전체 DTC 삭제 요청을 전송했습니다.");
+      setDtcs((current) => current.filter((dtc) => !clearedTargets.has(dtc.ecu)));
+      if (data.result === "PARTIAL") {
+        const failedTargets = (data.items || [])
+          .filter((item) => !item.ok)
+          .map((item) => item.target)
+          .join(", ");
+        pushLog(`일부 DTC 삭제 완료. 실패: ${failedTargets}`);
+      } else {
+        pushLog("전체 DTC 삭제 요청을 전송했습니다.");
+      }
     } catch (error) {
       pushLog(`DTC 삭제 실패: ${error.message}`);
     } finally {
