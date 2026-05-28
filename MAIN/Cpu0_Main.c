@@ -66,6 +66,7 @@ void core0_main(void)
         };
 
     initLwip(ethAddr);
+    for(volatile int i=0; i<10000000; i++);
     UdpInit();
     TcpInit();
     Sd_Init();
