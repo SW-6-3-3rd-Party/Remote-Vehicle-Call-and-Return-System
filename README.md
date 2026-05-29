@@ -1,6 +1,6 @@
 <div align="center">
 
-# ReV-CaRS
+# ReV-CaRS (Remote Vehicle Call & Return System)
 
 ### Remote Vehicle Call & Return System
 
