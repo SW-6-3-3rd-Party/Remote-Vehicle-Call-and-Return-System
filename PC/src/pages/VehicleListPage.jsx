@@ -54,10 +54,10 @@ function VehicleListPage({
       <main className="vehicle-content">
         <article className="vehicle-list-card">
           <div className="vehicle-main-info">
-            <div className="vehicle-icon">RC</div>
+            <div className="vehicle-icon">3</div>
 
             <div>
-              <h2>RC Car #1</h2>
+              <h2>3rd-Party</h2>
             </div>
           </div>
 

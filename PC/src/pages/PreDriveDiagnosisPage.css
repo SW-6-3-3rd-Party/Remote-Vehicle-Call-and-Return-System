@@ -1,0 +1,1521 @@
+.prediag-page {
+  width: 100%;
+  min-width: 1360px;
+  height: 100vh;
+  min-height: 760px;
+  padding: 24px 34px;
+  overflow: hidden;
+  color: #10233f;
+  background:
+    radial-gradient(circle at top left, rgba(47, 212, 255, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(255, 182, 73, 0.08), transparent 28%),
+    linear-gradient(180deg, #f5f8fc 0%, #e8edf6 100%);
+  font-family:
+    "Pretendard Variable",
+    "SUIT Variable",
+    "Noto Sans KR",
+    "Segoe UI",
+    sans-serif;
+}
+
+.prediag-page * {
+  box-sizing: border-box;
+}
+
+.prediag-header {
+  height: 150px;
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 235px;
+  align-items: start;
+  gap: 22px;
+}
+
+.prediag-back-button {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid rgba(78, 104, 135, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #10233f;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(17, 30, 54, 0.08);
+}
+
+.prediag-title {
+  text-align: center;
+}
+
+.prediag-title p {
+  margin: 0 0 10px;
+  color: #1b5cff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+}
+
+.prediag-title h1 {
+  margin: 0;
+  color: #08060d;
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.prediag-title span {
+  display: block;
+  max-width: 760px;
+  margin: 14px auto 0;
+  color: #5d718c;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.prediag-mode-box {
+  justify-self: end;
+  width: 235px;
+  padding: 14px;
+  border: 1px solid rgba(115, 138, 164, 0.2);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 14px 34px rgba(17, 30, 54, 0.08);
+}
+
+.prediag-mode {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(27, 92, 255, 0.12);
+  color: #1b5cff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.prediag-mode.running {
+  background: rgba(255, 182, 73, 0.18);
+  color: #9d5a00;
+}
+
+.prediag-mode-box small {
+  display: block;
+  margin-top: 10px;
+  color: #5d718c;
+  font-size: 12px;
+  text-align: center;
+}
+
+.prediag-mode-box button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 10px;
+  border: 1px solid rgba(27, 92, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(244, 248, 255, 0.94);
+  color: #1b5cff;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.prediag-mode-box button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.prediag-content {
+  height: calc(100vh - 198px);
+  display: grid;
+  grid-template-rows: 116px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.prediag-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.prediag-overview article,
+.prediag-ecu-card,
+.prediag-test-panel,
+.prediag-log-panel,
+.prediag-decision-panel {
+  border: 1px solid rgba(98, 121, 151, 0.18);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 44px rgba(17, 30, 54, 0.1);
+}
+
+.prediag-overview article {
+  padding: 16px 20px;
+}
+
+.prediag-overview span,
+.prediag-ecu-head p,
+.prediag-panel-head p {
+  color: #5d718c;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.prediag-overview strong {
+  display: block;
+  margin-top: 6px;
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1.05;
+}
+
+.prediag-overview p {
+  margin: 8px 0 0;
+  color: #5d718c;
+  font-size: 13px;
+}
+
+.prediag-main-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 14px;
+}
+
+.prediag-ecu-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.prediag-ecu-card {
+  min-height: 0;
+  padding: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.prediag-ecu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.prediag-ecu-head p {
+  margin: 0 0 6px;
+}
+
+.prediag-ecu-head h2 {
+  margin: 0;
+  color: #000;
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.prediag-state {
+  min-height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.prediag-state.standby {
+  background: rgba(93, 113, 140, 0.12);
+  color: #5d718c;
+}
+
+.prediag-state.ready,
+.prediag-state.normal {
+  background: rgba(47, 212, 255, 0.14);
+  color: #0b7191;
+}
+
+.prediag-state.warning {
+  background: rgba(255, 182, 73, 0.18);
+  color: #9d5a00;
+}
+
+.prediag-state.offline {
+  background: rgba(186, 61, 61, 0.12);
+  color: #ba3d3d;
+}
+
+.prediag-ecu-summary {
+  min-height: 44px;
+  margin: 14px 0 12px;
+  color: #5d718c;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.prediag-route {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(8, 17, 34, 0.04);
+  color: #5d718c;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.prediag-did-list {
+  min-height: 0;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.prediag-did-row {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid rgba(98, 121, 151, 0.12);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  background: rgba(247, 250, 255, 0.9);
+}
+
+.prediag-did-row span {
+  min-width: 0;
+  color: #10233f;
+  font-size: 13px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prediag-did-row strong {
+  color: #1b5cff;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.prediag-did-row em {
+  margin-left: 4px;
+  color: #5d718c;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.prediag-value-good {
+  color: #0b8f66 !important;
+}
+
+.prediag-value-warn {
+  color: #9d5a00 !important;
+}
+
+.prediag-value-bad {
+  color: #ba3d3d !important;
+}
+
+.prediag-empty {
+  padding: 34px 10px;
+  color: #5d718c;
+  text-align: center;
+  font-size: 14px;
+}
+
+.prediag-side-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 260px minmax(0, 1fr) 120px;
+  gap: 14px;
+}
+
+.prediag-test-panel,
+.prediag-log-panel,
+.prediag-decision-panel {
+  min-height: 0;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.prediag-panel-head {
+  margin-bottom: 12px;
+}
+
+.prediag-panel-head p {
+  margin: 0 0 4px;
+}
+
+.prediag-panel-head h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.prediag-test-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prediag-test-row {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(98, 121, 151, 0.14);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: rgba(247, 250, 255, 0.9);
+}
+
+.prediag-test-row strong {
+  display: block;
+  color: #10233f;
+  font-size: 13px;
+}
+
+.prediag-test-row span {
+  display: block;
+  margin-top: 2px;
+  color: #5d718c;
+  font-size: 11px;
+}
+
+.prediag-test-row em {
+  min-width: 58px;
+  height: 26px;
+  border-radius: 999px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.prediag-test-row.idle em {
+  background: rgba(93, 113, 140, 0.12);
+  color: #5d718c;
+}
+
+.prediag-test-row.running em {
+  background: rgba(255, 182, 73, 0.18);
+  color: #9d5a00;
+}
+
+.prediag-test-row.success em {
+  background: rgba(47, 212, 255, 0.14);
+  color: #0b7191;
+}
+
+.prediag-test-row.fail em {
+  background: rgba(186, 61, 61, 0.12);
+  color: #ba3d3d;
+}
+
+.prediag-log-list {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.prediag-log-list p {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(8, 17, 34, 0.04);
+  color: #5d718c;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.prediag-decision-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.prediag-start-button,
+.prediag-cancel-button {
+  border: 0;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.prediag-start-button {
+  background: #1b5cff;
+  color: white;
+}
+
+.prediag-cancel-button {
+  background: rgba(244, 248, 255, 0.94);
+  color: #10233f;
+  border: 1px solid rgba(78, 104, 135, 0.2);
+}
+
+.prediag-start-button:disabled,
+.prediag-cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+   PreDrive Diagnosis Compact Layout Fix
+   - 한 화면에 더 안정적으로 맞추기
+   - ECU 카드 / 기능 테스트 / 로그 패널 축소
+   ===================================================== */
+
+.prediag-page {
+  padding: 16px 22px !important;
+  min-width: 1360px !important;
+  min-height: 720px !important;
+}
+
+/* 상단 헤더 높이 축소 */
+.prediag-header {
+  height: 120px !important;
+  grid-template-columns: 160px minmax(0, 1fr) 220px !important;
+  gap: 18px !important;
+}
+
+.prediag-back-button {
+  min-height: 42px !important;
+  padding: 0 18px !important;
+  font-size: 13px !important;
+}
+
+.prediag-title p {
+  margin-bottom: 6px !important;
+  font-size: 12px !important;
+}
+
+.prediag-title h1 {
+  font-size: 40px !important;
+}
+
+.prediag-title span {
+  margin-top: 10px !important;
+  font-size: 14px !important;
+}
+
+.prediag-mode-box {
+  width: 220px !important;
+  padding: 12px !important;
+}
+
+.prediag-mode {
+  min-height: 32px !important;
+  font-size: 12px !important;
+}
+
+.prediag-mode-box small {
+  margin-top: 8px !important;
+  font-size: 11px !important;
+}
+
+.prediag-mode-box button {
+  min-height: 34px !important;
+  margin-top: 8px !important;
+  font-size: 12px !important;
+}
+
+/* 전체 콘텐츠 높이 재계산 */
+.prediag-content {
+  height: calc(100vh - 152px) !important;
+  grid-template-rows: 96px minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+/* 상단 요약 카드 축소 */
+.prediag-overview {
+  gap: 10px !important;
+}
+
+.prediag-overview article {
+  padding: 13px 16px !important;
+  border-radius: 18px !important;
+}
+
+.prediag-overview span {
+  font-size: 11px !important;
+}
+
+.prediag-overview strong {
+  margin-top: 5px !important;
+  font-size: 24px !important;
+}
+
+.prediag-overview p {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+}
+
+/* 메인 영역 간격 축소 */
+.prediag-main-grid {
+  gap: 10px !important;
+  grid-template-columns: minmax(0, 1fr) 340px !important;
+}
+
+.prediag-ecu-grid {
+  gap: 10px !important;
+}
+
+/* ECU 카드 축소 */
+.prediag-ecu-card {
+  padding: 14px !important;
+  border-radius: 18px !important;
+}
+
+.prediag-ecu-head h2 {
+  font-size: 22px !important;
+}
+
+.prediag-ecu-head p {
+  margin-bottom: 4px !important;
+  font-size: 11px !important;
+}
+
+.prediag-state {
+  min-height: 28px !important;
+  padding: 0 11px !important;
+  font-size: 11px !important;
+}
+
+.prediag-ecu-summary {
+  min-height: 34px !important;
+  margin: 10px 0 !important;
+  font-size: 13px !important;
+}
+
+.prediag-route {
+  padding: 9px 10px !important;
+  font-size: 12px !important;
+}
+
+.prediag-did-list {
+  margin-top: 10px !important;
+  gap: 6px !important;
+}
+
+.prediag-did-row {
+  min-height: 35px !important;
+  padding: 7px 9px !important;
+  border-radius: 10px !important;
+}
+
+.prediag-did-row span {
+  font-size: 12px !important;
+}
+
+.prediag-did-row strong {
+  font-size: 13px !important;
+}
+
+.prediag-empty {
+  padding: 24px 8px !important;
+  font-size: 13px !important;
+}
+
+/* 오른쪽 패널 재배치 */
+.prediag-side-panel {
+  gap: 10px !important;
+  grid-template-rows: 230px 118px 104px !important;
+}
+
+.prediag-test-panel,
+.prediag-log-panel,
+.prediag-decision-panel {
+  padding: 13px !important;
+  border-radius: 18px !important;
+}
+
+.prediag-panel-head {
+  margin-bottom: 9px !important;
+}
+
+.prediag-panel-head p {
+  font-size: 11px !important;
+}
+
+.prediag-panel-head h2 {
+  font-size: 19px !important;
+}
+
+/* 기능 테스트 5개가 다 보이도록 축소 */
+.prediag-test-list {
+  gap: 6px !important;
+}
+
+.prediag-test-row {
+  min-height: 31px !important;
+  padding: 6px 8px !important;
+  border-radius: 10px !important;
+}
+
+.prediag-test-row strong {
+  font-size: 12px !important;
+}
+
+.prediag-test-row span {
+  margin-top: 1px !important;
+  font-size: 10px !important;
+}
+
+.prediag-test-row em {
+  min-width: 50px !important;
+  height: 22px !important;
+  font-size: 11px !important;
+}
+
+/* 로그 영역 축소 */
+.prediag-log-list {
+  gap: 6px !important;
+}
+
+.prediag-log-list p {
+  padding: 7px 8px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+/* 하단 선택 버튼 영역 */
+.prediag-decision-panel {
+  grid-template-rows: 1fr 1fr !important;
+  gap: 8px !important;
+}
+
+.prediag-start-button,
+.prediag-cancel-button {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+}
+
+/* =====================================================
+   PreDrive Diagnosis Ultra Compact Fix
+   - 전체 모듈 더 축소
+   - ECU 카드 높이 감소
+   - 오른쪽 패널 안정 배치
+   ===================================================== */
+
+.prediag-page {
+  padding: 10px 18px !important;
+  min-height: 700px !important;
+}
+
+/* 상단 헤더 더 축소 */
+.prediag-header {
+  height: 105px !important;
+  grid-template-columns: 150px minmax(0, 1fr) 205px !important;
+  gap: 14px !important;
+}
+
+.prediag-back-button {
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+}
+
+.prediag-title p {
+  margin-bottom: 4px !important;
+  font-size: 11px !important;
+  letter-spacing: 0.2em !important;
+}
+
+.prediag-title h1 {
+  font-size: 36px !important;
+  line-height: 1 !important;
+}
+
+.prediag-title span {
+  margin-top: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+
+.prediag-mode-box {
+  width: 205px !important;
+  padding: 10px !important;
+  border-radius: 16px !important;
+}
+
+.prediag-mode {
+  min-height: 28px !important;
+  font-size: 11px !important;
+}
+
+.prediag-mode-box small {
+  margin-top: 7px !important;
+  font-size: 10px !important;
+}
+
+.prediag-mode-box button {
+  min-height: 30px !important;
+  margin-top: 7px !important;
+  font-size: 11px !important;
+}
+
+/* 메인 콘텐츠 전체 높이 */
+.prediag-content {
+  height: calc(100vh - 125px) !important;
+  grid-template-rows: 82px minmax(0, 1fr) !important;
+  gap: 8px !important;
+}
+
+/* 상단 요약 카드 더 축소 */
+.prediag-overview {
+  gap: 8px !important;
+}
+
+.prediag-overview article {
+  padding: 10px 14px !important;
+  border-radius: 16px !important;
+}
+
+.prediag-overview span {
+  font-size: 10px !important;
+}
+
+.prediag-overview strong {
+  margin-top: 3px !important;
+  font-size: 22px !important;
+}
+
+.prediag-overview p {
+  margin-top: 4px !important;
+  font-size: 11px !important;
+}
+
+/* 메인 영역: 오른쪽 패널 조금 줄이고 ECU 영역 확보 */
+.prediag-main-grid {
+  gap: 8px !important;
+  grid-template-columns: minmax(0, 1fr) 320px !important;
+}
+
+.prediag-ecu-grid {
+  gap: 8px !important;
+}
+
+/* ECU 카드 전체 높이감 축소 */
+.prediag-ecu-card {
+  padding: 12px !important;
+  border-radius: 16px !important;
+}
+
+.prediag-ecu-head h2 {
+  font-size: 20px !important;
+}
+
+.prediag-ecu-head p {
+  margin-bottom: 3px !important;
+  font-size: 10px !important;
+}
+
+.prediag-state {
+  min-height: 25px !important;
+  padding: 0 10px !important;
+  font-size: 10px !important;
+}
+
+.prediag-ecu-summary {
+  min-height: 30px !important;
+  margin: 8px 0 !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.prediag-route {
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+}
+
+.prediag-did-list {
+  margin-top: 8px !important;
+  gap: 5px !important;
+}
+
+.prediag-did-row {
+  min-height: 31px !important;
+  padding: 6px 8px !important;
+  border-radius: 9px !important;
+}
+
+.prediag-did-row span {
+  font-size: 11px !important;
+}
+
+.prediag-did-row strong {
+  font-size: 12px !important;
+}
+
+.prediag-did-row em {
+  font-size: 10px !important;
+}
+
+.prediag-empty {
+  padding: 18px 8px !important;
+  font-size: 12px !important;
+}
+
+/* 오른쪽 패널 더 압축 */
+.prediag-side-panel {
+  gap: 8px !important;
+  grid-template-rows: 210px 105px 92px !important;
+}
+
+.prediag-test-panel,
+.prediag-log-panel,
+.prediag-decision-panel {
+  padding: 11px !important;
+  border-radius: 16px !important;
+}
+
+.prediag-panel-head {
+  margin-bottom: 7px !important;
+}
+
+.prediag-panel-head p {
+  font-size: 10px !important;
+}
+
+.prediag-panel-head h2 {
+  font-size: 18px !important;
+}
+
+/* 기능 테스트 5개 전부 보이게 */
+.prediag-test-list {
+  gap: 5px !important;
+}
+
+.prediag-test-row {
+  min-height: 29px !important;
+  padding: 5px 7px !important;
+  border-radius: 9px !important;
+}
+
+.prediag-test-row strong {
+  font-size: 11px !important;
+}
+
+.prediag-test-row span {
+  margin-top: 1px !important;
+  font-size: 9px !important;
+}
+
+.prediag-test-row em {
+  min-width: 46px !important;
+  height: 20px !important;
+  font-size: 10px !important;
+}
+
+/* 로그 더 작게 */
+.prediag-log-list {
+  gap: 5px !important;
+}
+
+.prediag-log-list p {
+  padding: 6px 8px !important;
+  border-radius: 9px !important;
+  font-size: 10px !important;
+  line-height: 1.3 !important;
+}
+
+/* 버튼 영역 더 작게 */
+.prediag-decision-panel {
+  grid-template-rows: 1fr 1fr !important;
+  gap: 7px !important;
+}
+
+.prediag-start-button,
+.prediag-cancel-button {
+  min-height: 34px !important;
+  border-radius: 11px !important;
+  font-size: 12px !important;
+}
+
+/* 화면에서 카드가 너무 아래로 길어 보이는 문제 방지 */
+.prediag-ecu-card,
+.prediag-test-panel,
+.prediag-log-panel,
+.prediag-decision-panel {
+  box-shadow: 0 12px 30px rgba(17, 30, 54, 0.08) !important;
+}
+
+/* ECU 카드 세로 길이 줄이기 */
+.prediag-ecu-grid {
+  align-items: start !important;
+}
+
+.prediag-ecu-card {
+  height: 500px !important;
+  max-height: 500px !important;
+}
+
+/* ECU 카드 + 오른쪽 기능 테스트/로그/버튼 전체를 아래로 내리기 */
+.prediag-main-grid {
+  margin-top: 30px !important;
+}
+
+/* =====================================================
+   Remove Diagnostic Log Panel
+   - 오른쪽 패널을 기능 테스트 + 선택 버튼 2단으로 구성
+   ===================================================== */
+
+/* 진단 로그 제거 후 오른쪽 패널 2단 구성 */
+.prediag-side-panel {
+  grid-template-rows: 500px 90px !important;
+  align-content: start !important;
+}
+
+.prediag-log-panel {
+  display: none !important;
+}
+
+.prediag-log-panel {
+  display: none !important;
+}
+
+/* =====================================================
+   Header Start Button
+   - 원격 조종 버튼을 우측 상단 상태 박스 안에 배치
+   ===================================================== */
+
+.prediag-mode-box {
+  height: auto !important;
+}
+
+.prediag-header-start-button {
+  width: 100% !important;
+  min-height: 34px !important;
+  margin-top: 8px !important;
+
+  border: 0 !important;
+  border-radius: 12px !important;
+
+  background: #1b5cff !important;
+  color: white !important;
+
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.prediag-header-start-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* 아래 버튼 영역은 '안 넘어가기' 하나만 표시 */
+.prediag-decision-panel {
+  grid-template-rows: 1fr !important;
+}
+
+.prediag-cancel-button {
+  min-height: 38px !important;
+}
+
+/* =====================================================
+   Header Decision Buttons
+   - 넘어가기 / 안 넘어가기 버튼을 우측 상단 상태 박스 안에 같이 배치
+   ===================================================== */
+
+.prediag-mode-box {
+  width: 260px !important;
+  height: auto !important;
+}
+
+.prediag-header-decision-buttons {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px !important;
+  margin-top: 8px !important;
+}
+
+.prediag-header-start-button,
+.prediag-header-cancel-button {
+  width: 100% !important;
+  min-height: 32px !important;
+  margin-top: 0 !important;
+
+  border: 0 !important;
+  border-radius: 11px !important;
+
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.prediag-header-start-button {
+  background: #1b5cff !important;
+  color: white !important;
+}
+
+.prediag-header-cancel-button {
+  background: rgba(244, 248, 255, 0.94) !important;
+  color: #10233f !important;
+  border: 1px solid rgba(78, 104, 135, 0.2) !important;
+}
+
+.prediag-header-start-button:disabled,
+.prediag-header-cancel-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* 아래쪽 선택 버튼 박스는 더 이상 사용하지 않음 */
+.prediag-decision-panel {
+  display: none !important;
+}
+
+/* 오른쪽 패널은 기능 테스트만 사용 */
+.prediag-side-panel {
+  grid-template-rows: 500px !important;
+  align-content: start !important;
+}
+
+/* =====================================================
+   Header Confirm Box
+   - 재진단 제거
+   - 원격 조종 확인/취소 버튼 우측 상단 배치
+   ===================================================== */
+
+.prediag-mode-box {
+  width: 280px !important;
+  height: auto !important;
+  padding: 10px 12px !important;
+}
+
+.prediag-confirm-box {
+  margin-top: 10px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid rgba(78, 104, 135, 0.14) !important;
+}
+
+.prediag-confirm-box p {
+  margin: 0 0 8px !important;
+  color: #10233f !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  line-height: 1.3 !important;
+}
+
+.prediag-header-decision-buttons {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+
+.prediag-header-start-button,
+.prediag-header-cancel-button {
+  width: 100% !important;
+  min-height: 32px !important;
+  margin-top: 0 !important;
+  border-radius: 11px !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.prediag-header-start-button {
+  border: 0 !important;
+  background: #1b5cff !important;
+  color: white !important;
+}
+
+.prediag-header-cancel-button {
+  border: 1px solid rgba(78, 104, 135, 0.22) !important;
+  background: rgba(244, 248, 255, 0.94) !important;
+  color: #10233f !important;
+}
+
+.prediag-header-start-button:disabled,
+.prediag-header-cancel-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* =====================================================
+   Confirm Only Box
+   - CHECK / 마지막 갱신 / 재진단 제거
+   - 확인/취소만 표시
+   ===================================================== */
+
+.prediag-confirm-only {
+  width: 280px !important;
+  min-height: 88px !important;
+  padding: 14px 16px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+
+  border-radius: 18px !important;
+}
+
+.prediag-confirm-only .prediag-mode,
+.prediag-confirm-only small,
+.prediag-confirm-only > button,
+.prediag-confirm-box {
+  display: none !important;
+}
+
+.prediag-confirm-title {
+  margin: 0 0 12px !important;
+  color: #10233f !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+  line-height: 1.35 !important;
+}
+
+.prediag-header-decision-buttons {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.prediag-header-start-button,
+.prediag-header-cancel-button {
+  width: 100% !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.prediag-header-start-button {
+  border: 0 !important;
+  background: #1b5cff !important;
+  color: white !important;
+}
+
+.prediag-header-cancel-button {
+  border: 1px solid rgba(78, 104, 135, 0.22) !important;
+  background: rgba(244, 248, 255, 0.94) !important;
+  color: #10233f !important;
+}
+
+.prediag-header-start-button:disabled,
+.prediag-header-cancel-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* =====================================================
+   Header Right Group
+   - 재진단 상태 모듈 + 원격 조종 확인 모듈 가로 배치
+   ===================================================== */
+
+/* 우측 상단 영역을 넓게 확보 */
+.prediag-header {
+  grid-template-columns: 150px minmax(0, 1fr) 560px !important;
+}
+
+/* 오른쪽 상단 두 모듈 묶음 */
+.prediag-header-right-group {
+  justify-self: end !important;
+
+  width: 500px !important;
+  display: grid !important;
+  grid-template-columns: 190px 300px !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+
+/* 재진단 모듈만 축소 */
+.prediag-status-box {
+  width: 190px !important;
+  min-height: 86px !important;
+  padding: 7px 9px !important;
+
+  border: 1px solid rgba(115, 138, 164, 0.2) !important;
+  border-radius: 15px !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 10px 24px rgba(17, 30, 54, 0.07) !important;
+}
+
+.prediag-status-box .prediag-mode.running {
+  background: rgba(255, 182, 73, 0.18) !important;
+  color: #9d5a00 !important;
+}
+
+.prediag-status-box .prediag-mode {
+  width: 100% !important;
+  min-height: 24px !important;
+  border-radius: 999px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  background: rgba(27, 92, 255, 0.12) !important;
+  color: #1b5cff !important;
+
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.1em !important;
+}
+
+.prediag-status-box .prediag-mode.running {
+  background: rgba(255, 182, 73, 0.18) !important;
+  color: #9d5a00 !important;
+}
+
+.prediag-status-box small {
+  display: block !important;
+  margin-top: 5px !important;
+
+  color: #5d718c !important;
+  font-size: 9px !important;
+  text-align: center !important;
+}
+
+.prediag-status-box button {
+  width: 100% !important;
+  min-height: 24px !important;
+  margin-top: 5px !important;
+
+  border: 1px solid rgba(27, 92, 255, 0.16) !important;
+  border-radius: 9px !important;
+  background: rgba(244, 248, 255, 0.94) !important;
+  color: #1b5cff !important;
+
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  cursor: pointer !important;
+}
+
+.prediag-status-box button:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+/* 원격 조종 여부 확인 모듈 */
+.prediag-confirm-box-top {
+  width: 300px !important;
+  min-height: 108px !important;
+  padding: 14px 16px !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+
+  border: 1px solid rgba(115, 138, 164, 0.2) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 14px 34px rgba(17, 30, 54, 0.08) !important;
+}
+
+.prediag-confirm-title {
+  margin: 0 0 12px !important;
+  color: #10233f !important;
+
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+  line-height: 1.35 !important;
+}
+
+.prediag-header-decision-buttons {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.prediag-header-start-button,
+.prediag-header-cancel-button {
+  width: 100% !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.prediag-header-start-button {
+  border: 0 !important;
+  background: #1b5cff !important;
+  color: white !important;
+}
+
+.prediag-header-cancel-button {
+  border: 1px solid rgba(78, 104, 135, 0.22) !important;
+  background: rgba(244, 248, 255, 0.94) !important;
+  color: #10233f !important;
+}
+
+.prediag-header-start-button:disabled,
+.prediag-header-cancel-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* 예전에 쓰던 단일 confirm 박스 숨김 영향 제거 */
+.prediag-confirm-only {
+  display: none !important;
+}
+
+/* =====================================================
+   Re-Diagnosis Module Only Size Fix
+   - 재진단 모듈만 축소
+   ===================================================== */
+
+.prediag-header-right-group {
+  width: 500px !important;
+  grid-template-columns: 190px 300px !important;
+}
+
+.prediag-status-box {
+  width: 190px !important;
+  min-height: 86px !important;
+  padding: 7px 9px !important;
+  border-radius: 15px !important;
+  box-shadow: 0 10px 24px rgba(17, 30, 54, 0.07) !important;
+}
+
+.prediag-status-box .prediag-mode {
+  min-height: 24px !important;
+  font-size: 10px !important;
+  letter-spacing: 0.1em !important;
+}
+
+.prediag-status-box small {
+  margin-top: 0px !important;
+  font-size: 9px !important;
+}
+
+.prediag-status-box button {
+  min-height: 24px !important;
+  margin-top: 0px !important;
+  border-radius: 9px !important;
+  font-size: 10px !important;
+}
+
+/* =====================================================
+   Remote Confirm Module Height Fix
+   - 원격 조종 여부 모듈 세로 길이 축소
+   ===================================================== */
+
+.prediag-confirm-box-top {
+  min-height: 98px !important;
+  padding: 8px 12px !important;
+  border-radius: 15px !important;
+}
+
+/* 문구 간격 줄이기 */
+.prediag-confirm-title {
+  margin: 0 0 12px !important;
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+/* 확인 / 취소 버튼 높이 줄이기 */
+.prediag-header-start-button,
+.prediag-header-cancel-button {
+  min-height: 26px !important;
+  font-size: 11px !important;
+  border-radius: 9px !important;
+}
+
+/* 버튼 사이 간격 줄이기 */
+.prediag-header-decision-buttons {
+  gap: 6px !important;
+}
+
+/* =====================================================
+   Header Title Center Fix
+   - 상단 제목만 화면 기준 중앙 배치
+   - 나머지 모듈 위치는 그대로 유지
+   ===================================================== */
+
+.prediag-header {
+  position: relative !important;
+}
+
+.prediag-title {
+  position: absolute !important;
+  left: 50% !important;
+  top: 0 !important;
+  transform: translateX(-50%) !important;
+
+  width: 720px !important;
+  text-align: center !important;
+  z-index: 1 !important;
+}
+
+/* 좌측 차량 리스트 버튼, 우측 모듈이 제목 위로 올라오도록 */
+.prediag-back-button,
+.prediag-header-right-group {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* =====================================================
+   Header Position Fix
+   - 제목은 화면 중앙
+   - 오른쪽 재진단/확인 모듈은 기존 우측 위치 고정
+   ===================================================== */
+
+.prediag-header {
+  position: relative !important;
+}
+
+/* 제목만 화면 기준 중앙 배치 */
+.prediag-title {
+  position: absolute !important;
+  left: 50% !important;
+  top: 0 !important;
+  transform: translateX(-50%) !important;
+
+  width: 720px !important;
+  text-align: center !important;
+  z-index: 1 !important;
+}
+
+/* 차량 리스트 버튼은 1번째 칸 고정 */
+.prediag-back-button {
+  grid-column: 1 !important;
+  justify-self: start !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* 오른쪽 모듈은 반드시 3번째 칸에 고정 */
+.prediag-header-right-group {
+  grid-column: 3 !important;
+  justify-self: end !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
