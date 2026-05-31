@@ -25,7 +25,7 @@ void Callback_Diag_RoutingDeactivated(void)
     }
 }
 
-void Callback_COM_SessionCnt(uint8_t *cnt) { cnt++;}
+void Callback_COM_SessionCnt(uint8_t *cnt) { (*cnt)++;}
 
 void Callback_COM_PcTimeout(void)
 {
