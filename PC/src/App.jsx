@@ -5,12 +5,22 @@ import VehicleListPage from "./pages/VehicleListPage";
 import AccidentHistoryPage from "./pages/AccidentHistoryPage";
 import RemoteControlPage from "./pages/RemoteControlPage";
 import DiagnosticPage from "./pages/DiagnosticPage";
+import PreDriveDiagnosisPage from "./pages/PreDriveDiagnosisPage";
 
 function App() {
   const [page, setPage] = useState("vehicleList");
 
   if (page === "diagnostic") {
     return <DiagnosticPage onBack={() => setPage("vehicleList")} />;
+  }
+
+  if (page === "preDriveDiagnosis") {
+    return (
+      <PreDriveDiagnosisPage
+        onBack={() => setPage("vehicleList")}
+        onStartRemoteControl={() => setPage("remoteControl")}
+      />
+    );
   }
 
   if (page === "accidentHistory") {
@@ -25,7 +35,7 @@ function App() {
     <VehicleListPage
       onOpenDiagnostic={() => setPage("diagnostic")}
       onOpenAccidents={() => setPage("accidentHistory")}
-      onOpenRemoteControl={() => setPage("remoteControl")}
+      onOpenRemoteControl={() => setPage("preDriveDiagnosis")}
     />
   );
 }
