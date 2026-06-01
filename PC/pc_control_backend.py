@@ -371,10 +371,14 @@ def control_command():
                 vehicle_state["driving_state"] = 1
 
             elif value == "LEFT":
+                control_state["gear"] = 2
                 control_state["steer"] = 1
+                vehicle_state["driving_state"] = 0
 
             elif value == "RIGHT":
+                control_state["gear"] = 2
                 control_state["steer"] = 2
+                vehicle_state["driving_state"] = 0
 
             elif value == "FORWARD_LEFT":
                 control_state["accel"] = 1
@@ -403,6 +407,7 @@ def control_command():
             elif value == "STOP":
                 control_state["accel"] = 0
                 control_state["steer"] = 0
+                control_state["gear"] = 2
                 vehicle_state["driving_state"] = 0
 
         elif command_type == "brake":

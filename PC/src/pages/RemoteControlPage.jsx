@@ -74,6 +74,12 @@ function RemoteControlPage({ onBack }) {
     return "STOP";
   };
 
+  const getGearForDriveCommand = (command) => {
+    if (command.startsWith("FORWARD")) return "D";
+    if (command.startsWith("BACKWARD")) return "R";
+    return "N";
+  };
+
   const sendDriveCommandIfChanged = (keys) => {
     const nextCommand = getDriveCommand(keys);
 
@@ -82,6 +88,7 @@ function RemoteControlPage({ onBack }) {
     }
 
     lastDriveCommandRef.current = nextCommand;
+    setGear(getGearForDriveCommand(nextCommand));
     sendControlCommand("drive", nextCommand);
   };
 
@@ -240,6 +247,7 @@ if (["P", "R", "N", "D"].includes(gearKey)) {
       brakeOnRef.current = false;
       setBrakeOn(false);
 
+      setGear("N");
       sendControlCommand("drive", "STOP");
       sendControlCommand("brake", "OFF");
     };
@@ -250,6 +258,7 @@ const handleBack = () => {
 
   sendControlCommand("drive", "STOP");
   sendControlCommand("brake", "OFF");
+  setGear("N");
 
   fetch(REMOTE_STOP_URL, { method: "POST" }).catch((error) => {
     console.error("원격 제어 OFF 실패:", error);
