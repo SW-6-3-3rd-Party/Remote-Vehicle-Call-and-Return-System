@@ -5,6 +5,8 @@
 #include "IfxStm.h"
 #include "Bsp.h"
 
+#include "Encoder.h"
+
 /*
  * ======================================================
  * TC375 ShieldBuddy + Arduino Motor Shield Rev3
@@ -58,6 +60,7 @@
  * 1000us = 1ms = 1kHz
  */
 #define MOTOR_PWM_PERIOD_US       (1000U)
+#define MOTOR_ENCODER_POLL_STEP_US (50U)
 
 /*
  * Default straight drive speed.
@@ -90,7 +93,19 @@ static uint32 g_rightDutyPercent = MOTOR_DEFAULT_DUTY_PERCENT;
 
 static void delayUs(uint32 us)
 {
-    waitTime(IfxStm_getTicksFromMicroseconds(BSP_DEFAULT_TIMER, us));
+    while (us >= MOTOR_ENCODER_POLL_STEP_US)
+    {
+        waitTime(IfxStm_getTicksFromMicroseconds(BSP_DEFAULT_TIMER,
+                                                 MOTOR_ENCODER_POLL_STEP_US));
+        Encoder_Poll();
+        us -= MOTOR_ENCODER_POLL_STEP_US;
+    }
+
+    if (us > 0U)
+    {
+        waitTime(IfxStm_getTicksFromMicroseconds(BSP_DEFAULT_TIMER, us));
+        Encoder_Poll();
+    }
 }
 
 
