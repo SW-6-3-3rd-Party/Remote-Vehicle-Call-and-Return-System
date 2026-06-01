@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/UDS%20%2F%20DoIP-Diagnostics-7C3AED?style=for-the-badge" alt="UDS DoIP" />
   <img src="https://img.shields.io/badge/SOME%2FIP-Accident%20Service-B45309?style=for-the-badge" alt="SOME/IP" />
 </p>
-<a href="https://www.youtube.com/" target="_blank">
+<a href="https://youtu.be/uWm6sR4MBFQ?si=EgAXB6FjKu9uQjEL" target="_blank">
   <img src="https://img.shields.io/badge/YouTube-Demo-red?logo=youtube&logoColor=white&style=for-the-badge" alt="YouTube" />
 </a>
 </div>
@@ -181,7 +181,7 @@
 
 <div align="center">
 
-[![YouTube Demo](https://img.shields.io/badge/YouTube-Demo-red?logo=youtube&logoColor=white&style=for-the-badge)](https://www.youtube.com/)
+[![YouTube Demo](https://img.shields.io/badge/YouTube-Demo-red?logo=youtube&logoColor=white&style=for-the-badge)](https://youtu.be/uWm6sR4MBFQ?si=EgAXB6FjKu9uQjEL)
 
 </div>
 
