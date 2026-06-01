@@ -5,6 +5,7 @@
 #include "IfxPort.h"
 #include "IfxStm.h"
 
+#include "Encoder.h"
 #include "Motor.h"
 
 /*
@@ -19,6 +20,7 @@
  * Period: 20ms = 20000us
  */
 #define SERVO_PERIOD_US   (20000U)
+#define SERVO_ENCODER_POLL_STEP_US (50U)
 
 /*
  * 서보에 실제로 허용할 절대 펄스 범위.
@@ -43,7 +45,19 @@ static uint32 g_currentPulseUs = STEERING_MIDDLE_US;
 
 static void delayUs(uint32 us)
 {
-    waitTime(IfxStm_getTicksFromMicroseconds(BSP_DEFAULT_TIMER, us));
+    while (us >= SERVO_ENCODER_POLL_STEP_US)
+    {
+        waitTime(IfxStm_getTicksFromMicroseconds(BSP_DEFAULT_TIMER,
+                                                 SERVO_ENCODER_POLL_STEP_US));
+        Encoder_Poll();
+        us -= SERVO_ENCODER_POLL_STEP_US;
+    }
+
+    if (us > 0U)
+    {
+        waitTime(IfxStm_getTicksFromMicroseconds(BSP_DEFAULT_TIMER, us));
+        Encoder_Poll();
+    }
 }
 
 static void delayLowUsWithMotorUpdate(uint32 us)
@@ -51,6 +65,7 @@ static void delayLowUsWithMotorUpdate(uint32 us)
     while (us >= 1000U)
     {
         MotorControl_Update();
+        Encoder_Update1ms();
         us -= 1000U;
     }
 
