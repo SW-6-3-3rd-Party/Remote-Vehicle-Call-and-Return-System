@@ -155,25 +155,68 @@
 
 ## 프로젝트 시연
 
-### 시스템 아키텍처
+### 모듈 별 기능
 
-> 관제 PC, MAIN Gateway, ACT ECU, BODY ECU, MEDIA Pi가 Ethernet, CAN, SOME/IP, DoIP로 연결되는 전체 구조입니다.
-
-<p align="center">
-  <img src="./docs/resources/cellImage_2015213638_0.jpg" width="90%" alt="시스템 아키텍처" />
-</p>
-
-### 핵심 시연 흐름
-
-| 단계 | 시나리오 |
-| --- | --- |
-| 1 | 관제 PC에서 차량을 선택하고 사전 진단 화면으로 진입 |
-| 2 | UDS/DoIP 진단으로 MAIN, ACT, BODY, MEDIA 상태와 DTC 확인 |
-| 3 | 원격 조종 화면에서 키보드 입력으로 전진, 후진, 조향, 브레이크, 기어 변경 수행 |
-| 4 | MAIN ECU가 Ethernet 제어 패킷을 ACT/BODY CAN 제어 프레임으로 변환 |
-| 5 | ACT ECU가 구동부를 제어하고 엔코더 기반 속도 피드백을 송신 |
-| 6 | BODY ECU가 등화, 부저, 초음파 경고, 충돌 이벤트를 처리 |
-| 7 | MEDIA Pi가 사고 영상과 이벤트 이력을 저장하고 PC에 제공 |
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/1f46721c-7459-4974-ac8d-bb96278207fc" width="100%" alt="0 CAR" />
+      </td>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/0e159255-0fef-48dd-95d5-cbda34e43965" width="100%" alt="1 CAR_LIST" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/7c44363b-24bc-4438-8c6b-d82da2a97543" width="100%" alt="2 CAR_CONTROL_START" />
+      </td>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/aacc1140-5714-41f7-8432-fdac151ebd7b" width="100%" alt="3 CAR_DRIVE" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/27d43f6f-4a34-42b5-9278-afa988902830" width="100%" alt="4 CAR_DRIVE_STOP" />
+      </td>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/7dd64831-bf65-4c89-9ddb-dca03968eca3" width="100%" alt="5 CAR_DRIVE_BACK" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/19810958-c774-49de-a26b-86456da0faca" width="100%" alt="6 CAR_DRIVE_STEERING" />
+      </td>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/56980396-a95c-400c-8d93-bbb0ec3b257c" width="100%" alt="7 CAR_LIGHT" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/e8b3083f-b310-45bb-b359-4748cb8221ee" width="100%" alt="8 CAR_HORN" />
+      </td>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/016dac73-7ed7-467b-9a03-19589c5b5326" width="100%" alt="9 CAR_COLLISION_WARNING" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/eef04306-da9b-416c-893f-9c43de9de7e4" width="100%" alt="10 CAR_FAIL_SAFE" />
+      </td>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/f73f4139-e10a-4a69-a649-a6fcd6d831ad" width="100%" alt="11 CAR_SEARCH_ACCIDENT" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/2192e957-4e8f-4790-a98b-ebedb03d87c1" width="100%" alt="12 CAR_ACCIDENT_OCCUR" />
+      </td>
+      <td align="center" width="50%">
+        <img src="https://github.com/user-attachments/assets/03b9dca9-95db-4dcf-abab-618782bda35f" width="100%" alt="13 CAR_DIAGNOSTICS" />
+      </td>
+    </tr>
+  </table>
+</div>
 
 ### 시연 영상
 
@@ -186,6 +229,14 @@
 </div>
 
 ---
+
+### 시스템 아키텍처
+
+> 관제 PC, MAIN Gateway, ACT ECU, BODY ECU, MEDIA Pi가 Ethernet, CAN, SOME/IP, DoIP로 연결되는 전체 구조입니다.
+
+<p align="center">
+  <img src="./docs/resources/cellImage_2015213638_0.jpg" width="90%" alt="시스템 아키텍처" />
+</p>
 
 ## 4. 시스템 구성
 
@@ -238,6 +289,10 @@
 단위 테스트, 통합 테스트, 시스템 테스트, 인수 테스트까지 수행하며 PC → MAIN → ACT/BODY → MEDIA로 이어지는 전체 원격 차량 제어 흐름을 검증했습니다.
 
 ## 7. 담당 역할
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/0474e61a-bfff-426d-87b1-c36e3f7a3353" width="90%" alt="담당 역할" />
+</p>
 
 <table>
   <tr>
