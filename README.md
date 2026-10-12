@@ -43,7 +43,7 @@
         <sub><b>김태곤</b></sub>
       </a>
       <br />
-      ACT
+      MEDIA (Raspberry Pi)
     </td>
     <td align="center">
       <a href="https://github.com/kookjd7759">
@@ -52,7 +52,7 @@
         <sub><b>국동균</b></sub>
       </a>
       <br />
-      PC / MEDIA
+      ACT / BODY (TC375), 차량 설계
     </td>
     <td align="center">
       <a href="https://github.com/LSA31">
@@ -61,7 +61,7 @@
         <sub><b>이승아</b></sub>
       </a>
       <br />
-      MAIN
+      원격 제어 PC / GATEWAY (Raspberry Pi)
     </td>
     <td align="center">
       <a href="https://github.com/cenway">
@@ -70,7 +70,7 @@
         <sub><b>윤한준</b></sub>
       </a>
       <br />
-      BODY
+      MAIN (TC375)
     </td>
     <td align="center">
       <a href="https://github.com/chohabin">
@@ -79,7 +79,7 @@
         <sub><b>조하빈</b></sub>
       </a>
       <br />
-      MAIN
+      원격 제어 PC / GATEWAY (Raspberry Pi)
     </td>
   </tr>
 </table>
@@ -294,40 +294,13 @@
   <img src="https://github.com/user-attachments/assets/0474e61a-bfff-426d-87b1-c36e3f7a3353" width="90%" alt="담당 역할" />
 </p>
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <strong>김태곤</strong><br /><br />
-      - 파트: <strong>ACT ECU</strong><br />
-      - 담당: <strong>차량 구동 및 제동 실행부</strong><br />
-      - 주요 기능: CAN 제어 명령 수신, DC 모터 제어, 브레이크 처리, 서보 조향, 엔코더 기반 속도 피드백, ACT UDS 진단<br />
-      - 비고: MAIN Gateway에서 전달된 제어 명령을 실제 RC카 동작으로 변환하고, 속도와 조향 상태를 다시 시스템에 피드백하는 실행 계층 구현
-    </td>
-    <td width="50%" valign="top">
-      <strong>국동균</strong><br /><br />
-      - 파트: <strong>PC Control Center / MEDIA Pi</strong><br />
-      - 담당: <strong>관제 UI, 제어 백엔드, 미디어/블랙박스 연동</strong><br />
-      - 주요 기능: React 관제 화면, Flask 제어 API, UDP 제어 송신, 속도/이벤트 수신, 사고 이력 조회, SOME/IP 클라이언트, MEDIA Pi 녹화/스트리밍/진단 연동<br />
-      - 비고: 사용자가 차량 상태 확인, 사전 진단, 원격 조종, 사고 이력 조회를 하나의 화면 흐름에서 수행할 수 있도록 PC-MEDIA 흐름 구현
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <strong>이승아, 조하빈</strong><br /><br />
-      - 파트: <strong>MAIN / Gateway ECU</strong><br />
-      - 담당: <strong>차량 네트워크 게이트웨이 및 제어 라우팅</strong><br />
-      - 주요 기능: Ethernet 수신, LwIP 기반 UDP/TCP 처리, SoAd/SD/DoIP, PduR/COM 라우팅, ACT/BODY CAN 제어 송신, MAIN 진단 및 통신 DTC 처리<br />
-      - 비고: PC 제어 명령을 차량 내부 네트워크로 변환하고, 하위 ECU 진단과 상태 피드백이 오갈 수 있는 중앙 게이트웨이 구조 구현
-    </td>
-    <td width="50%" valign="top">
-      <strong>윤한준</strong><br /><br />
-      - 파트: <strong>BODY ECU</strong><br />
-      - 담당: <strong>차체 전장 및 경고 출력</strong><br />
-      - 주요 기능: 전조등, 방향지시등, 비상등, 브레이크등, 부저, 초음파 경고, 충돌 이벤트, BODY UDS 진단<br />
-      - 비고: 원격 주행 중 사용자와 주변 환경에 차량 상태를 알리는 표시/경고 계층을 담당하고, 충돌 이벤트를 시스템 이벤트로 연결
-    </td>
-  </tr>
-</table>
+| 이름 | 담당 파트 | 담당 역할 |
+| --- | --- | --- |
+| **김태곤** | **MEDIA (Raspberry Pi)** | 전후방 카메라 및 마이크 기반 블랙박스, 사고 이벤트 영상 저장, 영상 스트리밍, SOME/IP 서비스 및 MEDIA 진단 구현 |
+| **국동균** | **ACT / BODY (TC375), 차량 설계** | 차량 설계, 구동·제동·조향 및 엔코더 속도 피드백 구현, 등화·경적·초음파 경고·충돌 이벤트 처리, ACT/BODY UDS 진단 구현 |
+| **이승아** | **원격 제어 PC / GATEWAY (Raspberry Pi)** | 원격 제어 PC 및 Raspberry Pi 기반 GATEWAY 개발 공동 담당 |
+| **윤한준** | **MAIN (TC375)** | Ethernet 수신, UDP/TCP 처리, CAN 제어 라우팅, 하위 ECU 상태 피드백 및 DoIP/UDS 진단 중계 구현 |
+| **조하빈** | **원격 제어 PC / GATEWAY (Raspberry Pi)** | 원격 제어 PC 및 Raspberry Pi 기반 GATEWAY 개발 공동 담당 |
 
 ## 8. 기술 스택
 
